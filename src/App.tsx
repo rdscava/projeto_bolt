@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { AppProvider, useAppContext } from './context/AppContext';
 import { Toaster } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Users, FileText, TrendingUp, Database, Building2, FileCheck, Layers, Calculator, History, Menu, X } from 'lucide-react';
+import { Users, FileText, TrendingUp, Database, Building2, FileCheck, Layers, Calculator, History, Menu, X, Wallet } from 'lucide-react';
 import GestaoServidores from './pages/GestaoServidores';
 import Demonstrativo from './pages/Demonstrativo';
 import Indices from './pages/Indices';
@@ -12,6 +12,7 @@ import Averbacao from './pages/Averbacao';
 import BaseJuncao from './pages/BaseJuncao';
 import MediaAposentadoria from './pages/MediaAposentadoria';
 import Simulacoes from './pages/Simulacoes';
+import Pagamento from './pages/Pagamento';
 
 const NAV_ITEMS = [
   { id: 'servidores', label: 'Gestão de Servidores', icon: Users },
@@ -22,6 +23,7 @@ const NAV_ITEMS = [
   { id: 'averbacao', label: 'Averbação', icon: FileCheck },
   { id: 'basejuncao', label: 'Base Junção', icon: Layers },
   { id: 'media', label: 'Média Aposentadoria', icon: Calculator },
+  { id: 'pagamento', label: 'Pagamento', icon: Wallet },
   { id: 'simulacoes', label: 'Simulações', icon: History },
 ] as const;
 
@@ -40,6 +42,7 @@ function AppContent() {
       case 'averbacao': return <Averbacao />;
       case 'basejuncao': return <BaseJuncao />;
       case 'media': return <MediaAposentadoria />;
+      case 'pagamento': return <Pagamento />;
       case 'simulacoes': return <Simulacoes />;
       default: return <Demonstrativo />;
     }
