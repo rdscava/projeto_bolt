@@ -48,11 +48,6 @@ interface AppState {
 
 const AppContext = createContext<AppState | null>(null);
 
-const defaultVinculo: VinculoConfig = {
-  rgpsEnabled: true, rppsEnabled: true,
-  rgpsPeriodos: [], rppsPeriodos: [],
-};
-
 const emptySim = createEmptySimulation();
 
 export function AppProvider({ children }: { children: ReactNode }) {

@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Trash2, FileSpreadsheet, Upload, Loader2, Plus, Copy, Pencil, FolderOpen } from 'lucide-react';
+import { Trash2, FileSpreadsheet, Loader2, Plus, Copy, Pencil, FolderOpen } from 'lucide-react';
 import {
   fetchSimulacoes, deleteSimulacao, fetchSimulation,
   renameSimulation, duplicateSimulation,

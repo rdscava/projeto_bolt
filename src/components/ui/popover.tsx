@@ -25,7 +25,7 @@ export function Popover({ children }: PopoverProps) {
   return <PopoverContext.Provider value={{ open, setOpen, close }}><div ref={ref} className="relative inline-block">{children}</div></PopoverContext.Provider>;
 }
 
-export function PopoverTrigger({ children, asChild }: { children: React.ReactElement; asChild?: boolean }) {
+export function PopoverTrigger({ children }: { children: React.ReactElement; asChild?: boolean }) {
   const { open, setOpen } = React.useContext(PopoverContext);
   const child = React.Children.only(children) as React.ReactElement;
   return React.cloneElement(child, { onClick: (e: React.MouseEvent) => { child.props.onClick?.(e); setOpen(!open); } });

@@ -1,11 +1,5 @@
 import React, { useState, useEffect } from 'react';
 
-interface AlertDialogProps {
-  open: boolean;
-  onOpenChange?: (open: boolean) => void;
-  children: React.ReactNode;
-}
-
 export function AlertDialog({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   return <AlertDialogContext.Provider value={{ open, setOpen }}>{children}</AlertDialogContext.Provider>;
@@ -13,7 +7,7 @@ export function AlertDialog({ children }: { children: React.ReactNode }) {
 
 const AlertDialogContext = React.createContext<{ open: boolean; setOpen: (v: boolean) => void }>({ open: false, setOpen: () => {} });
 
-export function AlertDialogTrigger({ children, asChild }: { children: React.ReactElement; asChild?: boolean }) {
+export function AlertDialogTrigger({ children }: { children: React.ReactElement; asChild?: boolean }) {
   const { setOpen } = React.useContext(AlertDialogContext);
   const child = React.Children.only(children) as React.ReactElement;
   return React.cloneElement(child, { onClick: (e: React.MouseEvent) => { child.props.onClick?.(e); setOpen(true); } });

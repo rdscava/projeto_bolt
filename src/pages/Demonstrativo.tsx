@@ -15,7 +15,7 @@ import { formatBRL, parseDecimalBR, extractMMYYYY, competToSortKey, generateComp
 import { getTetoINSS, isInTetoRange } from '../data/teto-inss';
 import { createSimulation, updateSimulation } from '../services/simulacaoService';
 import { generatePdfHtml } from '../lib/pdfGenerator';
-import type { DemonstrativoRubrica, MediaRow, Simulation } from '../types';
+import type { MediaRow, Simulation } from '../types';
 
 export default function Demonstrativo() {
   const ctx = useAppContext();
