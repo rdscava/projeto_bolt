@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Plus, Pencil, Trash2, Search, Upload, Loader2, FileDown, FileUp, ArrowUpDown, ArrowUp, ArrowDown, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
-import { fetchServidoresPage, saveServidor, deleteServidor, bulkImportServidores, fetchAllServidores } from '../services/servidorService';
+import { fetchServidoresPage, saveServidor, deleteServidor, bulkImportServidores, fetchAllServidores, BulkImportError, type ImportErrorDetail } from '../services/servidorService';
 import { formatRFMask, formatRFFromNumber } from '../lib/format';
 import { parseCSVFile, generateCSV, downloadCSV } from '../lib/csvParser';
 import { toast } from 'sonner';
@@ -88,6 +88,7 @@ export default function GestaoServidores() {
   const [importSummary, setImportSummary] = useState<ImportSummary | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [parseProgress, setParseProgress] = useState(false);
+  const [importError, setImportError] = useState<ImportErrorDetail | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadPage = useCallback(async () => {
@@ -208,6 +209,7 @@ export default function GestaoServidores() {
     }
     setImporting(true);
     setImportProgress(0);
+    setImportError(null);
     try {
       const imported = await bulkImportServidores(preview.records, (current, total) => {
         setImportProgress(Math.round((current / total) * 100));
@@ -220,8 +222,33 @@ export default function GestaoServidores() {
       });
       toast.success(`${imported} servidores importados!`);
       loadPage();
-    } catch {
-      toast.error('Erro ao importar servidores');
+    } catch (err) {
+      if (err instanceof BulkImportError) {
+        setImportError(err.detail);
+        console.error('[Import Error] Detalhes completos:', {
+          table: err.detail.table,
+          column: err.detail.column,
+          record: err.detail.record,
+          value: err.detail.value,
+          message: err.detail.message,
+          details: err.detail.details,
+          hint: err.detail.hint,
+          code: err.detail.code,
+          operation: err.detail.operation,
+          stack: err.detail.stack,
+        });
+      } else {
+        const e = err as Error;
+        setImportError({
+          batchIndex: -1,
+          recordIndex: -1,
+          record: {},
+          table: 'servidores',
+          message: e.message,
+          operation: 'INSERT INTO servidores',
+          stack: e.stack,
+        });
+      }
     } finally {
       setImporting(false);
     }
@@ -248,6 +275,7 @@ export default function GestaoServidores() {
     setImportOpen(false);
     setPreview(null);
     setImportSummary(null);
+    setImportError(null);
     setImportProgress(0);
   };
 
@@ -361,7 +389,7 @@ export default function GestaoServidores() {
         <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Importar Servidores — CSV</DialogTitle></DialogHeader>
 
-          {!preview && !importSummary && (
+          {!preview && !importSummary && !importError && (
             <>
               <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleFileInput} />
               <div
@@ -516,6 +544,35 @@ export default function GestaoServidores() {
 
               <div className="flex justify-end">
                 <Button onClick={closeImport}>Concluir</Button>
+              </div>
+            </div>
+          )}
+
+          {importError && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-red-600 dark:text-red-400 font-semibold">
+                <XCircle className="w-5 h-5" /> Erro durante a importação
+              </div>
+              <div className="rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/20 p-4 space-y-2 text-sm overflow-x-auto">
+                <div><span className="font-semibold">Tabela:</span> {importError.table}</div>
+                {importError.column && <div><span className="font-semibold">Coluna:</span> {importError.column}</div>}
+                {importError.value !== undefined && <div><span className="font-semibold">Valor:</span> <code className="bg-red-100 dark:bg-red-900/30 px-1 rounded">{String(importError.value)}</code></div>}
+                {importError.recordIndex >= 0 && <div><span className="font-semibold">Registro (índice):</span> {importError.recordIndex}</div>}
+                <div><span className="font-semibold">Mensagem:</span> {importError.message}</div>
+                {importError.details && <div><span className="font-semibold">Detalhes:</span> {importError.details}</div>}
+                {importError.hint && <div><span className="font-semibold">Dica:</span> {importError.hint}</div>}
+                {importError.code && <div><span className="font-semibold">Código:</span> {importError.code}</div>}
+                <div><span className="font-semibold">Operação:</span> <code className="bg-red-100 dark:bg-red-900/30 px-1 rounded text-xs">{importError.operation}</code></div>
+                {importError.stack && (
+                  <details className="mt-2">
+                    <summary className="cursor-pointer text-xs font-semibold">Stack trace</summary>
+                    <pre className="text-xs mt-1 whitespace-pre-wrap break-all">{importError.stack}</pre>
+                  </details>
+                )}
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setImportError(null)}>Voltar</Button>
+                <Button onClick={closeImport}>Fechar</Button>
               </div>
             </div>
           )}

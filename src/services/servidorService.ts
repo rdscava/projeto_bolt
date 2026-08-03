@@ -94,12 +94,36 @@ export async function deleteServidor(id: string): Promise<void> {
   if (error) throw error;
 }
 
+export interface ImportErrorDetail {
+  batchIndex: number;
+  recordIndex: number;
+  record: Record<string, unknown>;
+  table: string;
+  column?: string;
+  value?: unknown;
+  message: string;
+  details?: string;
+  hint?: string;
+  code?: string;
+  operation: string;
+  stack?: string;
+}
+
+export class BulkImportError extends Error {
+  detail: ImportErrorDetail;
+  constructor(detail: ImportErrorDetail) {
+    super(detail.message);
+    this.name = 'BulkImportError';
+    this.detail = detail;
+  }
+}
+
 export async function bulkImportServidores(
   records: Omit<Servidor, 'id'>[],
   onProgress?: (current: number, total: number) => void,
 ): Promise<number> {
   let total = 0;
-  const chunkSize = 100;
+  const chunkSize = 500;
   for (let i = 0; i < records.length; i += chunkSize) {
     const chunk = records.slice(i, i + chunkSize).map(r => ({
       rf: r.rf,
@@ -110,10 +134,28 @@ export async function bulkImportServidores(
       jornada: r.jornada || '',
       nome_setor: r.nomeSetor || '',
     }));
-    const { error } = await supabase
-      .from('servidores')
-      .upsert(chunk, { onConflict: 'rf', ignoreDuplicates: false });
-    if (error) throw error;
+    const { error } = await supabase.from('servidores').insert(chunk);
+    if (error) {
+      const failedRecord = chunk[0];
+      const columnMatch = error.message.match(/column "([^"]+)"/i);
+      const columnName = columnMatch ? columnMatch[1] : undefined;
+      const recordMap: Record<string, string> = { ...failedRecord };
+      const detail: ImportErrorDetail = {
+        batchIndex: Math.floor(i / chunkSize),
+        recordIndex: i,
+        record: failedRecord,
+        table: 'servidores',
+        column: columnName,
+        value: columnName ? recordMap[columnName] : undefined,
+        message: error.message,
+        details: error.details || undefined,
+        hint: error.hint || undefined,
+        code: error.code || undefined,
+        operation: 'INSERT INTO servidores (rf, nome, cargo, referencia, relacao_jur_adm, jornada, nome_setor) VALUES (...)',
+        stack: new Error().stack,
+      };
+      throw new BulkImportError(detail);
+    }
     total += chunk.length;
     if (onProgress) onProgress(Math.min(i + chunkSize, records.length), records.length);
   }
