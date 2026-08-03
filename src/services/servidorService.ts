@@ -1,14 +1,63 @@
 import { supabase } from '../lib/supabase';
 import type { Servidor } from '../types';
 
-export async function fetchServidores(search?: string): Promise<Servidor[]> {
-  let query = supabase.from('servidores').select('*').order('nome');
+export interface PaginatedServidores {
+  data: Servidor[];
+  count: number;
+}
+
+export interface FetchPageParams {
+  search?: string;
+  sortField?: string;
+  sortDir?: 'asc' | 'desc';
+  page: number;
+  pageSize: number;
+}
+
+export async function fetchServidoresPage(params: FetchPageParams): Promise<PaginatedServidores> {
+  const { search, sortField = 'nome', sortDir = 'asc', page, pageSize } = params;
+  let query = supabase.from('servidores').select('*', { count: 'exact' });
+
   if (search) {
-    query = query.ilike('rf', `%${search}%`);
+    query = query.or(`rf.ilike.%${search}%,nome.ilike.%${search}%`);
   }
-  const { data, error } = await query.limit(5000);
+
+  query = query.order(sortField, { ascending: sortDir === 'asc' });
+
+  const from = page * pageSize;
+  const to = from + pageSize - 1;
+  const { data, count, error } = await query.range(from, to);
   if (error) throw error;
-  return (data || []).map(mapServidor);
+  return { data: (data || []).map(mapServidor), count: count || 0 };
+}
+
+export async function fetchAllServidores(): Promise<Servidor[]> {
+  const all: Servidor[] = [];
+  const chunkSize = 1000;
+  let from = 0;
+  while (true) {
+    const { data, error } = await supabase
+      .from('servidores')
+      .select('*')
+      .order('nome')
+      .range(from, from + chunkSize - 1);
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    all.push(...data.map(mapServidor));
+    if (data.length < chunkSize) break;
+    from += chunkSize;
+  }
+  return all;
+}
+
+export async function searchServidorByRF(rf: string): Promise<Servidor | null> {
+  const { data, error } = await supabase
+    .from('servidores')
+    .select('*')
+    .eq('rf', rf)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? mapServidor(data) : null;
 }
 
 export async function saveServidor(servidor: Servidor): Promise<Servidor> {
@@ -45,10 +94,14 @@ export async function deleteServidor(id: string): Promise<void> {
   if (error) throw error;
 }
 
-export async function bulkImportServidores(records: Omit<Servidor, 'id'>[]): Promise<number> {
+export async function bulkImportServidores(
+  records: Omit<Servidor, 'id'>[],
+  onProgress?: (current: number, total: number) => void,
+): Promise<number> {
   let total = 0;
-  for (let i = 0; i < records.length; i += 100) {
-    const chunk = records.slice(i, i + 100).map(r => ({
+  const chunkSize = 100;
+  for (let i = 0; i < records.length; i += chunkSize) {
+    const chunk = records.slice(i, i + chunkSize).map(r => ({
       rf: r.rf,
       nome: r.nome,
       cargo: r.cargo || '',
@@ -62,6 +115,7 @@ export async function bulkImportServidores(records: Omit<Servidor, 'id'>[]): Pro
       .upsert(chunk, { onConflict: 'rf', ignoreDuplicates: false });
     if (error) throw error;
     total += chunk.length;
+    if (onProgress) onProgress(Math.min(i + chunkSize, records.length), records.length);
   }
   return total;
 }

@@ -4,9 +4,8 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Search } from 'lucide-react';
-import { fetchServidores } from '../services/servidorService';
+import { searchServidorByRF } from '../services/servidorService';
 import { formatRFMask } from '../lib/format';
-import type { Servidor } from '../types';
 
 interface Props {
   extraFields?: boolean;
@@ -21,10 +20,9 @@ export default function ServidorHeader({ extraFields = true }: Props) {
     if (!rfInput.trim()) return;
     setLoading(true);
     try {
-      const servidores = await fetchServidores(rfInput.replace(/\D/g, '').slice(0, 3));
-      const found = servidores.find(s => s.rf === rfInput || s.rf.replace(/\D/g, '') === rfInput.replace(/\D/g, ''));
+      const found = await searchServidorByRF(rfInput);
       if (found) {
-        setServidor(found satisfies Servidor);
+        setServidor(found);
       }
     } finally { setLoading(false); }
   };
