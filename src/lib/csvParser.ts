@@ -5,10 +5,29 @@ export interface ParsedCSV {
   encoding: string;
 }
 
+const KNOWN_SEPARATORS = [';', ',', '\t', '|'];
+
 export async function parseCSVFile(file: File): Promise<ParsedCSV> {
   const { text, encoding } = await readFileWithEncoding(file);
   const separator = detectSeparator(text);
-  const { headers, rows } = parseCSVText(text, separator);
+  let { headers, rows } = parseCSVText(text, separator);
+
+  if (headers.length <= 1 && rows.length > 0) {
+    const reSplit = tryReSplitSingleColumn(headers, rows);
+    if (reSplit) {
+      headers = reSplit.headers;
+      rows = reSplit.rows;
+    }
+  }
+
+  headers = headers.map(h => h.trim());
+
+  console.log('[CSV Import] Delimitador detectado:', separator);
+  console.log('[CSV Import] Encoding detectado:', encoding);
+  console.log('[CSV Import] Quantidade de colunas:', headers.length);
+  console.log('[CSV Import] Primeira linha interpretada:', headers.join(separator));
+  console.log('[CSV Import] Cabeçalhos encontrados:', headers);
+
   return { headers, rows, separator, encoding };
 }
 
@@ -28,7 +47,19 @@ async function readFileWithEncoding(file: File): Promise<{ text: string; encodin
   if (isValidUTF8(bytes)) {
     return { text: new TextDecoder('utf-8').decode(bytes), encoding: 'UTF-8' };
   }
-  return { text: new TextDecoder('windows-1252').decode(bytes), encoding: 'ANSI (Windows-1252)' };
+  const winText = new TextDecoder('windows-1252').decode(bytes);
+  if (hasInvalidWindows1252(bytes)) {
+    return { text: new TextDecoder('iso-8859-1').decode(bytes), encoding: 'ISO-8859-1' };
+  }
+  return { text: winText, encoding: 'ANSI (Windows-1252)' };
+}
+
+function hasInvalidWindows1252(bytes: Uint8Array): boolean {
+  const undefinedBytes = [0x81, 0x8D, 0x8F, 0x90, 0x9D];
+  for (let i = 0; i < bytes.length; i++) {
+    if (undefinedBytes.includes(bytes[i])) return true;
+  }
+  return false;
 }
 
 function isValidUTF8(bytes: Uint8Array): boolean {
@@ -52,20 +83,23 @@ function isValidUTF8(bytes: Uint8Array): boolean {
 
 export function detectSeparator(text: string): string {
   const firstLine = text.split(/\r?\n/).find(l => l.trim()) || '';
+  return detectSeparatorFromLine(firstLine);
+}
+
+function detectSeparatorFromLine(line: string): string {
   let inQuotes = false;
-  let semiCount = 0;
-  let commaCount = 0;
-  for (let i = 0; i < firstLine.length; i++) {
-    const ch = firstLine[i];
+  const counts: Record<string, number> = { ';': 0, ',': 0, '\t': 0, '|': 0 };
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
     if (ch === '"') inQuotes = !inQuotes;
-    else if (!inQuotes) {
-      if (ch === ';') semiCount++;
-      else if (ch === ',') commaCount++;
-    }
+    else if (!inQuotes && ch in counts) counts[ch]++;
   }
-  if (semiCount >= commaCount && semiCount > 0) return ';';
-  if (commaCount > 0) return ',';
-  return ';';
+  let best = ';';
+  let bestCount = 0;
+  for (const sep of KNOWN_SEPARATORS) {
+    if (counts[sep] > bestCount) { best = sep; bestCount = counts[sep]; }
+  }
+  return bestCount > 0 ? best : ';';
 }
 
 export function parseCSVText(text: string, separator: string): { headers: string[]; rows: string[][] } {
@@ -74,6 +108,31 @@ export function parseCSVText(text: string, separator: string): { headers: string
   const headers = allRows[0].map(h => h.trim());
   const dataRows = allRows.slice(1).filter(r => r.some(c => c.trim() !== ''));
   return { headers, rows: dataRows };
+}
+
+function tryReSplitSingleColumn(headers: string[], rows: string[][]): { headers: string[]; rows: string[][] } | null {
+  const sample = headers.length === 1 ? headers[0] : (rows[0]?.[0] || '');
+  if (!sample) return null;
+  const innerSep = detectSeparatorFromLine(sample);
+  if (!KNOWN_SEPARATORS.includes(innerSep)) return null;
+  const parts = sample.split(innerSep);
+  if (parts.length < 2) return null;
+
+  console.log('[CSV Import] Linhas com aspas externas detectadas — re-dividindo com delimitador:', innerSep);
+
+  const newHeaders = headers.length === 1
+    ? sample.split(innerSep).map(h => h.trim())
+    : headers;
+
+  const newRows = rows.map(row => {
+    if (row.length === 1) {
+      const inner = row[0];
+      return inner.split(innerSep);
+    }
+    return row;
+  });
+
+  return { headers: newHeaders, rows: newRows };
 }
 
 function parseRawRows(text: string, separator: string): string[][] {
