@@ -1,7 +1,9 @@
+import { roundExcel } from '../lib/format';
+
 export interface IRBracket {
   min: number;
   max: number;
-  aliquota: number; // percentage (e.g. 27.5)
+  aliquota: number;
   parcelaDeduzir: number;
 }
 
@@ -27,6 +29,8 @@ export const REDUTOR_PARAMS: RedutorParams = {
   coeficiente: 0.133145,
 };
 
+export const LIMITE_ISENCAO_IR = 5000.00;
+
 export function findIRBracket(baseCalculo: number): IRBracket {
   return IR_TABLE_2025.find(b => baseCalculo >= b.min && baseCalculo <= b.max)
     ?? IR_TABLE_2025[IR_TABLE_2025.length - 1];
@@ -34,13 +38,13 @@ export function findIRBracket(baseCalculo: number): IRBracket {
 
 export function calcIRRFNormal(baseCalculo: number): { aliquota: number; irrfBruto: number; parcelaDeduzir: number; irrfNormal: number } {
   const bracket = findIRBracket(baseCalculo);
-  const irrfBruto = baseCalculo * (bracket.aliquota / 100);
-  const irrfNormal = Math.max(0, irrfBruto - bracket.parcelaDeduzir);
+  const irrfBruto = roundExcel(baseCalculo * (bracket.aliquota / 100));
+  const irrfNormal = roundExcel(Math.max(0, irrfBruto - bracket.parcelaDeduzir));
   return { aliquota: bracket.aliquota, irrfBruto, parcelaDeduzir: bracket.parcelaDeduzir, irrfNormal };
 }
 
 export function calcRedutor(provento: number, baseCalculo: number, params: RedutorParams): number {
   if (baseCalculo < params.faixaMin || baseCalculo > params.faixaMax) return 0;
   const redutor = params.constante - (params.coeficiente * provento);
-  return Math.max(0, redutor);
+  return roundExcel(Math.max(0, redutor));
 }

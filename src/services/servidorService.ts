@@ -6,7 +6,7 @@ export async function fetchServidores(search?: string): Promise<Servidor[]> {
   if (search) {
     query = query.ilike('rf', `%${search}%`);
   }
-  const { data, error } = await query.limit(2000);
+  const { data, error } = await query.limit(5000);
   if (error) throw error;
   return (data || []).map(mapServidor);
 }
@@ -17,6 +17,9 @@ export async function saveServidor(servidor: Servidor): Promise<Servidor> {
     nome: servidor.nome,
     cargo: servidor.cargo,
     referencia: servidor.referencia,
+    relacao_jur_adm: servidor.relacaoJurAdm || '',
+    jornada: servidor.jornada || '',
+    nome_setor: servidor.nomeSetor || '',
   };
   if (servidor.id) {
     const { data, error } = await supabase
@@ -45,8 +48,18 @@ export async function deleteServidor(id: string): Promise<void> {
 export async function bulkImportServidores(records: Omit<Servidor, 'id'>[]): Promise<number> {
   let total = 0;
   for (let i = 0; i < records.length; i += 100) {
-    const chunk = records.slice(i, i + 100);
-    const { error } = await supabase.from('servidores').insert(chunk);
+    const chunk = records.slice(i, i + 100).map(r => ({
+      rf: r.rf,
+      nome: r.nome,
+      cargo: r.cargo || '',
+      referencia: r.referencia || '',
+      relacao_jur_adm: r.relacaoJurAdm || '',
+      jornada: r.jornada || '',
+      nome_setor: r.nomeSetor || '',
+    }));
+    const { error } = await supabase
+      .from('servidores')
+      .upsert(chunk, { onConflict: 'rf', ignoreDuplicates: false });
     if (error) throw error;
     total += chunk.length;
   }
@@ -60,5 +73,8 @@ function mapServidor(row: Record<string, unknown>): Servidor {
     nome: (row.nome as string) || '',
     cargo: (row.cargo as string) || '',
     referencia: (row.referencia as string) || '',
+    relacaoJurAdm: (row.relacao_jur_adm as string) || '',
+    jornada: (row.jornada as string) || '',
+    nomeSetor: (row.nome_setor as string) || '',
   };
 }

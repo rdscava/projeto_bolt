@@ -4,6 +4,9 @@ export interface Servidor {
   nome: string;
   cargo: string;
   referencia: string;
+  relacaoJurAdm: string;
+  jornada: string;
+  nomeSetor: string;
 }
 
 export interface SigpecRow {

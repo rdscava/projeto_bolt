@@ -5,9 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Calculator, Info, Lock } from 'lucide-react';
-import { formatBRL } from '../lib/format';
+import { formatBRL, roundExcel } from '../lib/format';
 import { calcDemonstrativo } from '../lib/demonstrativoCalc';
-import { IR_TABLE_2025, calcIRRFNormal, calcRedutor, REDUTOR_PARAMS } from '../data/ir-table';
+import { IR_TABLE_2025, calcIRRFNormal, calcRedutor, REDUTOR_PARAMS, LIMITE_ISENCAO_IR } from '../data/ir-table';
 
 const SALARIO_MINIMO_DEFAULT = 1620.0;
 
@@ -28,15 +28,18 @@ export default function Pagamento() {
   const calculo = useMemo(() => {
     if (!temProvento) return null;
 
-    const basePrevidenciaria = Math.max(0, valorProvento - salarioMinimo);
+    const basePrevidenciaria = roundExcel(Math.max(0, valorProvento - salarioMinimo));
     const aliquotaPrevidenciaria = 14;
-    const descontoPrevidenciario = basePrevidenciaria * (aliquotaPrevidenciaria / 100);
-    const valorAposPrevidenciario = valorProvento - descontoPrevidenciario;
+    const descontoPrevidenciario = roundExcel(basePrevidenciaria * (aliquotaPrevidenciaria / 100));
+    const valorAposPrevidenciario = roundExcel(valorProvento - descontoPrevidenciario);
 
     const irNormal = calcIRRFNormal(valorAposPrevidenciario);
     const redutor = calcRedutor(valorProvento, valorAposPrevidenciario, REDUTOR_PARAMS);
-    const impostoDevido = Math.max(0, irNormal.irrfNormal - redutor);
-    const valorLiquido = valorAposPrevidenciario - impostoDevido;
+
+    const isento = valorAposPrevidenciario <= LIMITE_ISENCAO_IR;
+    const impostoBruto = irNormal.irrfNormal - redutor;
+    const impostoDevido = isento ? 0 : roundExcel(Math.max(0, impostoBruto));
+    const valorLiquido = roundExcel(valorAposPrevidenciario - impostoDevido);
 
     return {
       valorProvento,
@@ -50,6 +53,8 @@ export default function Pagamento() {
       parcelaDeduzir: irNormal.parcelaDeduzir,
       irrfNormal: irNormal.irrfNormal,
       redutor,
+      isento,
+      impostoBruto,
       impostoDevido,
       valorLiquido,
     };
@@ -166,6 +171,17 @@ export default function Pagamento() {
                   <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold">2</span>
                   Cálculo do Imposto de Renda
                 </h3>
+                {calculo.isento ? (
+                  <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900 rounded-lg p-4 text-sm">
+                    <p className="font-semibold text-green-700 dark:text-green-400">
+                      Isento de Imposto de Renda (Lei 15.270/2025)
+                    </p>
+                    <p className="text-green-600 dark:text-green-500 mt-1">
+                      A base de cálculo ({formatBRL(calculo.valorAposPrevidenciario)}) é igual ou inferior a R$ 5.000,00.
+                      Não há imposto de renda a reter — o único desconto é a contribuição previdenciária.
+                    </p>
+                  </div>
+                ) : null}
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -183,7 +199,7 @@ export default function Pagamento() {
                     <TableRow>
                       <TableCell className="font-medium">Alíquota Aplicável</TableCell>
                       <TableCell className="text-muted-foreground text-xs">Conforme tabela progressiva</TableCell>
-                      <TableCell className="text-right font-mono">{formatBRL(calculo.irAliquota).replace('R$', '').trim()}%</TableCell>
+                      <TableCell className="text-right font-mono">{calculo.irAliquota.toString().replace('.', ',')}%</TableCell>
                     </TableRow>
                     <TableRow>
                       <TableCell className="font-medium">IRRF Bruto</TableCell>
@@ -218,13 +234,21 @@ export default function Pagamento() {
                         </TableRow>
                       </>
                     )}
-                    <TableRow className="font-semibold bg-muted/30">
-                      <TableCell>Imposto Devido</TableCell>
-                      <TableCell className="text-muted-foreground text-xs">
-                        IRRF Normal {calculo.redutor > 0 ? '– Redutor' : ''}
-                      </TableCell>
-                      <TableCell className="text-right font-mono">– {formatBRL(calculo.impostoDevido)}</TableCell>
-                    </TableRow>
+                    {calculo.isento ? (
+                      <TableRow className="font-semibold bg-green-50 dark:bg-green-950/20">
+                        <TableCell>Imposto Devido</TableCell>
+                        <TableCell className="text-muted-foreground text-xs">Isento (Lei 15.270/2025)</TableCell>
+                        <TableCell className="text-right font-mono text-green-600 dark:text-green-400">{formatBRL(0)}</TableCell>
+                      </TableRow>
+                    ) : (
+                      <TableRow className="font-semibold bg-muted/30">
+                        <TableCell>Imposto Devido</TableCell>
+                        <TableCell className="text-muted-foreground text-xs">
+                          IRRF Normal {calculo.redutor > 0 ? '– Redutor' : ''}
+                        </TableCell>
+                        <TableCell className="text-right font-mono">– {formatBRL(calculo.impostoDevido)}</TableCell>
+                      </TableRow>
+                    )}
                   </TableBody>
                 </Table>
               </div>
@@ -290,6 +314,9 @@ export default function Pagamento() {
                   </TableBody>
                 </Table>
                 <div className="text-xs text-muted-foreground space-y-1 pt-2 border-t border-border">
+                  <p>
+                    <strong>Isenção da Lei 15.270/2025:</strong> rendas até R$ 5.000,00 são isentas de imposto de renda.
+                  </p>
                   <p>
                     <strong>Redutor da Lei 15.270/2025:</strong> aplicável quando a base de cálculo está entre R$ 5.000,01 e R$ 7.350,00.
                   </p>

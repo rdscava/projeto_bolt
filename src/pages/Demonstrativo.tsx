@@ -182,7 +182,7 @@ export default function Demonstrativo() {
               <Button variant="outline" className="gap-2 text-destructive border-destructive/30"><Trash2 className="w-4 h-4" /> Limpar Dados</Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
-              <AlertDialogHeader><AlertDialogTitle>Limpar Todos os Dados?</AlertDialogTitle><AlertDialogDescription>Todos os dados de todas as telas (SIGPEC, ADMRH, Averbação, configurações) serão apagados. Esta ação não pode ser desfeita.</AlertDialogDescription></AlertDialogHeader>
+              <AlertDialogHeader><AlertDialogTitle>Limpar Todos os Dados?</AlertDialogTitle><AlertDialogDescription>Todos os dados de todas as telas (SIGPEC, ADMRH, Averbação, configurações) serão apagados. Os índices de atualização não serão afetados. Esta ação não pode ser desfeita.</AlertDialogDescription></AlertDialogHeader>
               <AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={() => { clearAll(); toast.success('Dados limpos!'); }}>Limpar Tudo</AlertDialogAction></AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>

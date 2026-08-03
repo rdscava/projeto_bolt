@@ -89,3 +89,8 @@ export function formatCompetAsDate(compet: string): string {
   if (parts.length === 2) return `01/${parts[0].padStart(2, '0')}/${parts[1]}`;
   return compet;
 }
+
+export function roundExcel(value: number, decimals = 2): number {
+  const factor = Math.pow(10, decimals);
+  return Math.round((value + Number.EPSILON) * factor) / factor;
+}

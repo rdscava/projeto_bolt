@@ -6,8 +6,13 @@ import { Label } from '@/components/ui/label';
 import { Search } from 'lucide-react';
 import { fetchServidores } from '../services/servidorService';
 import { formatRFMask } from '../lib/format';
+import type { Servidor } from '../types';
 
-export default function ServidorHeader() {
+interface Props {
+  extraFields?: boolean;
+}
+
+export default function ServidorHeader({ extraFields = true }: Props) {
   const { servidor, setServidor } = useAppContext();
   const [rfInput, setRfInput] = useState(servidor?.rf || '');
   const [loading, setLoading] = useState(false);
@@ -19,7 +24,7 @@ export default function ServidorHeader() {
       const servidores = await fetchServidores(rfInput.replace(/\D/g, '').slice(0, 3));
       const found = servidores.find(s => s.rf === rfInput || s.rf.replace(/\D/g, '') === rfInput.replace(/\D/g, ''));
       if (found) {
-        setServidor(found);
+        setServidor(found satisfies Servidor);
       }
     } finally { setLoading(false); }
   };
@@ -56,6 +61,22 @@ export default function ServidorHeader() {
           <Label className="text-xs text-muted-foreground">Referência</Label>
           <Input value={servidor?.referencia || ''} readOnly className="bg-muted/50" />
         </div>
+        {extraFields && (
+          <>
+            <div>
+              <Label className="text-xs text-muted-foreground">Relação Jur-Adm</Label>
+              <Input value={servidor?.relacaoJurAdm || ''} readOnly className="bg-muted/50" />
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground">Jornada</Label>
+              <Input value={servidor?.jornada || ''} readOnly className="bg-muted/50" />
+            </div>
+            <div className="md:col-span-2">
+              <Label className="text-xs text-muted-foreground">Nome do Setor</Label>
+              <Input value={servidor?.nomeSetor || ''} readOnly className="bg-muted/50" />
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

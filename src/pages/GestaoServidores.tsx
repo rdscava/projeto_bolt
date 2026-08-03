@@ -12,6 +12,46 @@ import { formatRFMask, formatRFFromNumber } from '../lib/format';
 import { toast } from 'sonner';
 import type { Servidor } from '../types';
 
+interface ServidorForm {
+  rf: string;
+  nome: string;
+  cargo: string;
+  referencia: string;
+  relacaoJurAdm: string;
+  jornada: string;
+  nomeSetor: string;
+}
+
+const EMPTY_FORM: ServidorForm = { rf: '', nome: '', cargo: '', referencia: '', relacaoJurAdm: '', jornada: '', nomeSetor: '' };
+
+const COLUMN_MAP: Record<string, keyof ServidorForm> = {
+  'reg. completo': 'rf',
+  'reg.completo': 'rf',
+  'nome': 'nome',
+  'cargo': 'cargo',
+  'cargo/função': 'cargo',
+  'cargo/funcao': 'cargo',
+  'ref': 'referencia',
+  'referência': 'referencia',
+  'referencia': 'referencia',
+  'tipo': 'relacaoJurAdm',
+  'relação jur-adm': 'relacaoJurAdm',
+  'relacao jur-adm': 'relacaoJurAdm',
+  'jornada': 'jornada',
+  'setor': 'nomeSetor',
+  'nome do setor': 'nomeSetor',
+};
+
+function parsePasteLine(line: string, header: string[]): Partial<ServidorForm> {
+  const cols = line.split('\t');
+  const rec: Partial<ServidorForm> = {};
+  for (let i = 0; i < header.length && i < cols.length; i++) {
+    const field = COLUMN_MAP[header[i].toLowerCase().trim()];
+    if (field) rec[field] = cols[i]?.trim() || '';
+  }
+  return rec;
+}
+
 export default function GestaoServidores() {
   const [servidores, setServidores] = useState<Servidor[]>([]);
   const [loading, setLoading] = useState(true);
@@ -19,11 +59,11 @@ export default function GestaoServidores() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [editing, setEditing] = useState<Servidor | null>(null);
-  const [form, setForm] = useState({ rf: '', nome: '', cargo: '', referencia: '' });
+  const [form, setForm] = useState<ServidorForm>(EMPTY_FORM);
   const [pasteText, setPasteText] = useState('');
   const [importing, setImporting] = useState(false);
   const [page, setPage] = useState(0);
-  const pageSize = 50;
+  const pageSize = 100;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -43,8 +83,12 @@ export default function GestaoServidores() {
   const totalPages = Math.ceil(filtered.length / pageSize);
   const paged = filtered.slice(page * pageSize, (page + 1) * pageSize);
 
-  const openNew = () => { setEditing(null); setForm({ rf: '', nome: '', cargo: '', referencia: '' }); setDialogOpen(true); };
-  const openEdit = (s: Servidor) => { setEditing(s); setForm({ rf: s.rf, nome: s.nome, cargo: s.cargo, referencia: s.referencia }); setDialogOpen(true); };
+  const openNew = () => { setEditing(null); setForm(EMPTY_FORM); setDialogOpen(true); };
+  const openEdit = (s: Servidor) => {
+    setEditing(s);
+    setForm({ rf: s.rf, nome: s.nome, cargo: s.cargo, referencia: s.referencia, relacaoJurAdm: s.relacaoJurAdm, jornada: s.jornada, nomeSetor: s.nomeSetor });
+    setDialogOpen(true);
+  };
 
   const handleSave = async () => {
     if (!form.rf || !form.nome) { toast.error('Preencha RF e Nome'); return; }
@@ -69,17 +113,40 @@ export default function GestaoServidores() {
     setImporting(true);
     try {
       const lines = pasteText.trim().split('\n').filter(l => l.trim());
+      if (lines.length === 0) { toast.error('Nenhum registro válido encontrado'); setImporting(false); return; }
+
+      const firstCols = lines[0].split('\t');
+      const hasHeader = firstCols.some(c => COLUMN_MAP[c.toLowerCase().trim()] !== undefined);
+      const header = hasHeader ? firstCols.map(c => c.toLowerCase().trim()) : [];
+      const dataLines = hasHeader ? lines.slice(1) : lines;
+
       const records: Omit<Servidor, 'id'>[] = [];
-      for (const line of lines) {
+      for (const line of dataLines) {
         const cols = line.split('\t');
         if (cols.length < 2) continue;
-        const rfRaw = cols[0]?.trim() || '';
-        const nome = cols[1]?.trim() || '';
-        const cargo = cols[2]?.trim() || '';
-        const referencia = cols[3]?.trim() || '';
-        if (!rfRaw || !nome) continue;
+        let rec: Partial<ServidorForm>;
+        if (hasHeader) {
+          rec = parsePasteLine(line, header);
+        } else {
+          rec = {
+            rf: cols[0]?.trim() || '',
+            nome: cols[1]?.trim() || '',
+            cargo: cols[2]?.trim() || '',
+            referencia: cols[3]?.trim() || '',
+          };
+        }
+        const rfRaw = rec.rf || '';
+        if (!rfRaw || !rec.nome) continue;
         const rf = /^\d+$/.test(rfRaw) ? formatRFFromNumber(rfRaw) : rfRaw;
-        records.push({ rf, nome, cargo, referencia });
+        records.push({
+          rf,
+          nome: rec.nome,
+          cargo: rec.cargo || '',
+          referencia: rec.referencia || '',
+          relacaoJurAdm: rec.relacaoJurAdm || '',
+          jornada: rec.jornada || '',
+          nomeSetor: rec.nomeSetor || '',
+        });
       }
       if (records.length === 0) { toast.error('Nenhum registro válido encontrado'); setImporting(false); return; }
       const total = await bulkImportServidores(records);
@@ -112,28 +179,34 @@ export default function GestaoServidores() {
         <span className="text-sm text-muted-foreground self-center">{filtered.length} servidores</span>
       </div>
 
-      <div className="rounded-lg border border-border bg-card">
+      <div className="rounded-lg border border-border bg-card overflow-auto">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>RF</TableHead>
               <TableHead>Nome</TableHead>
-              <TableHead>Cargo/Função</TableHead>
-              <TableHead>Referência</TableHead>
+      <TableHead>Cargo/Função</TableHead>
+      <TableHead>Referência</TableHead>
+      <TableHead>Relação Jur-Adm</TableHead>
+      <TableHead>Jornada</TableHead>
+      <TableHead>Nome do Setor</TableHead>
               <TableHead className="w-24" />
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Carregando...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Carregando...</TableCell></TableRow>
             ) : paged.length === 0 ? (
-              <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Nenhum servidor encontrado.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Nenhum servidor encontrado.</TableCell></TableRow>
             ) : paged.map(s => (
               <TableRow key={s.id}>
                 <TableCell className="font-mono">{s.rf}</TableCell>
                 <TableCell className="font-semibold">{s.nome}</TableCell>
                 <TableCell>{s.cargo}</TableCell>
                 <TableCell>{s.referencia}</TableCell>
+                <TableCell>{s.relacaoJurAdm}</TableCell>
+                <TableCell>{s.jornada}</TableCell>
+                <TableCell>{s.nomeSetor}</TableCell>
                 <TableCell>
                   <div className="flex gap-1">
                     <Button variant="ghost" size="icon" onClick={() => openEdit(s)}><Pencil className="w-4 h-4" /></Button>
@@ -154,20 +227,25 @@ export default function GestaoServidores() {
 
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-2">
-          <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(p => p - 1)}>Anterior</Button>
+          <Button variant="outline" size="sm" disabled={page ===  0} onClick={() => setPage(p => p - 1)}>Anterior</Button>
           <span className="text-sm text-muted-foreground">Página {page + 1} de {totalPages}</span>
           <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>Próxima</Button>
         </div>
       )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader><DialogTitle>{editing ? 'Editar Servidor' : 'Novo Servidor'}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div><Label>RF (000.000.0 V0)</Label><Input value={form.rf} onChange={e => setForm(f => ({ ...f, rf: formatRFMask(e.target.value) }))} className="font-mono" /></div>
             <div><Label>Nome</Label><Input value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} /></div>
-            <div><Label>Cargo/Função</Label><Input value={form.cargo} onChange={e => setForm(f => ({ ...f, cargo: e.target.value }))} /></div>
-            <div><Label>Referência</Label><Input value={form.referencia} onChange={e => setForm(f => ({ ...f, referencia: e.target.value }))} /></div>
+            <div className="grid grid-cols-2 gap-4">
+              <div><Label>Cargo/Função</Label><Input value={form.cargo} onChange={e => setForm(f => ({ ...f, cargo: e.target.value }))} /></div>
+              <div><Label>Referência</Label><Input value={form.referencia} onChange={e => setForm(f => ({ ...f, referencia: e.target.value }))} /></div>
+              <div><Label>Relação Jur-Adm</Label><Input value={form.relacaoJurAdm} onChange={e => setForm(f => ({ ...f, relacaoJurAdm: e.target.value }))} /></div>
+              <div><Label>Jornada</Label><Input value={form.jornada} onChange={e => setForm(f => ({ ...f, jornada: e.target.value }))} /></div>
+            </div>
+            <div><Label>Nome do Setor</Label><Input value={form.nomeSetor} onChange={e => setForm(f => ({ ...f, nomeSetor: e.target.value }))} /></div>
           </div>
           <DialogFooter><Button onClick={handleSave}>{editing ? 'Salvar' : 'Cadastrar'}</Button></DialogFooter>
         </DialogContent>
@@ -176,8 +254,8 @@ export default function GestaoServidores() {
       <Dialog open={importOpen} onOpenChange={setImportOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader><DialogTitle>Importar Servidores</DialogTitle></DialogHeader>
-          <p className="text-sm text-muted-foreground">Cole os dados do Excel (RF, Nome, Cargo, Referência separados por TAB).</p>
-          <Textarea value={pasteText} onChange={e => setPasteText(e.target.value)} placeholder="Cole os dados aqui..." className="min-h-[200px] font-mono text-xs" />
+          <p className="text-sm text-muted-foreground">Cole os dados do Excel (com títulos de coluna na primeira linha: REG. COMPLETO, NOME, CARGO, REF, TIPO, JORNADA, SETOR).</p>
+          <Textarea value={pasteText} onChange={e => setPasteText(e.target.value)} placeholder="REG. COMPLETO\tNOME\tCARGO\tREF\tTIPO\tJORNADA\tSETOR\n..." className="min-h-[200px] font-mono text-xs" />
           <DialogFooter>
             <Button variant="outline" onClick={() => setImportOpen(false)}>Cancelar</Button>
             <Button onClick={handleBulkImport} disabled={importing} className="gap-2">

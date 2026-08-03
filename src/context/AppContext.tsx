@@ -85,7 +85,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const clearAll = useCallback(() => {
-    setActiveSimulation(createEmptySimulation());
+    setActiveSimulation(prev => {
+      const base = createEmptySimulation();
+      if (prev) base.indices = prev.indices;
+      return base;
+    });
     setSimulacaoSalva(false);
   }, []);
 
