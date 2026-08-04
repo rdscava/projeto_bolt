@@ -20,7 +20,7 @@ export async function parseCSVFile(file: File): Promise<ParsedCSV> {
     }
   }
 
-  headers = headers.map(h => h.trim());
+  headers = headers.map((h) => h.trim());
 
   console.log('[CSV Import] Delimitador detectado:', separator);
   console.log('[CSV Import] Encoding detectado:', encoding);
@@ -35,14 +35,8 @@ async function readFileWithEncoding(file: File): Promise<{ text: string; encodin
   const buffer = await file.arrayBuffer();
   const bytes = new Uint8Array(buffer);
 
-  if (bytes.length >= 3 && bytes[0] === 0xEF && bytes[1] === 0xBB && bytes[2] === 0xBF) {
+  if (bytes.length >= 3 && bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) {
     return { text: new TextDecoder('utf-8').decode(bytes.slice(3)), encoding: 'UTF-8 (BOM)' };
-  }
-  if (bytes.length >= 2 && bytes[0] === 0xFF && bytes[1] === 0xFE) {
-    return { text: new TextDecoder('utf-16le').decode(bytes.slice(2)), encoding: 'UTF-16 LE' };
-  }
-  if (bytes.length >= 2 && bytes[0] === 0xFE && bytes[1] === 0xFF) {
-    return { text: new TextDecoder('utf-16be').decode(bytes.slice(2)), encoding: 'UTF-16 BE' };
   }
   if (isValidUTF8(bytes)) {
     return { text: new TextDecoder('utf-8').decode(bytes), encoding: 'UTF-8' };
@@ -55,7 +49,7 @@ async function readFileWithEncoding(file: File): Promise<{ text: string; encodin
 }
 
 function hasInvalidWindows1252(bytes: Uint8Array): boolean {
-  const undefinedBytes = [0x81, 0x8D, 0x8F, 0x90, 0x9D];
+  const undefinedBytes = [0x81, 0x8d, 0x8f, 0x90, 0x9d];
   for (let i = 0; i < bytes.length; i++) {
     if (undefinedBytes.includes(bytes[i])) return true;
   }
@@ -66,23 +60,33 @@ function isValidUTF8(bytes: Uint8Array): boolean {
   let i = 0;
   while (i < bytes.length) {
     const b = bytes[i];
-    if (b < 0x80) { i++; }
-    else if (b >= 0xC2 && b < 0xE0) {
-      if (i + 1 >= bytes.length || (bytes[i + 1] & 0xC0) !== 0x80) return false;
+    if (b < 0x80) {
+      i++;
+    } else if (b >= 0xc2 && b < 0xe0) {
+      if (i + 1 >= bytes.length || (bytes[i + 1] & 0xc0) !== 0x80) return false;
       i += 2;
-    } else if (b >= 0xE0 && b < 0xF0) {
-      if (i + 2 >= bytes.length || (bytes[i + 1] & 0xC0) !== 0x80 || (bytes[i + 2] & 0xC0) !== 0x80) return false;
+    } else if (b >= 0xe0 && b < 0xf0) {
+      if (i + 2 >= bytes.length || (bytes[i + 1] & 0xc0) !== 0x80 || (bytes[i + 2] & 0xc0) !== 0x80)
+        return false;
       i += 3;
-    } else if (b >= 0xF0 && b < 0xF8) {
-      if (i + 3 >= bytes.length || (bytes[i + 1] & 0xC0) !== 0x80 || (bytes[i + 2] & 0xC0) !== 0x80 || (bytes[i + 3] & 0xC0) !== 0x80) return false;
+    } else if (b >= 0xf0 && b < 0xf8) {
+      if (
+        i + 3 >= bytes.length ||
+        (bytes[i + 1] & 0xc0) !== 0x80 ||
+        (bytes[i + 2] & 0xc0) !== 0x80 ||
+        (bytes[i + 3] & 0xc0) !== 0x80
+      )
+        return false;
       i += 4;
-    } else { return false; }
+    } else {
+      return false;
+    }
   }
   return true;
 }
 
 export function detectSeparator(text: string): string {
-  const firstLine = text.split(/\r?\n/).find(l => l.trim()) || '';
+  const firstLine = text.split(/\r?\n/).find((l) => l.trim()) || '';
   return detectSeparatorFromLine(firstLine);
 }
 
@@ -97,7 +101,10 @@ function detectSeparatorFromLine(line: string): string {
   let best = ';';
   let bestCount = 0;
   for (const sep of KNOWN_SEPARATORS) {
-    if (counts[sep] > bestCount) { best = sep; bestCount = counts[sep]; }
+    if (counts[sep] > bestCount) {
+      best = sep;
+      bestCount = counts[sep];
+    }
   }
   return bestCount > 0 ? best : ';';
 }
@@ -105,13 +112,16 @@ function detectSeparatorFromLine(line: string): string {
 export function parseCSVText(text: string, separator: string): { headers: string[]; rows: string[][] } {
   const allRows = parseRawRows(text, separator);
   if (allRows.length === 0) return { headers: [], rows: [] };
-  const headers = allRows[0].map(h => h.trim());
-  const dataRows = allRows.slice(1).filter(r => r.some(c => c.trim() !== ''));
+  const headers = allRows[0].map((h) => h.trim());
+  const dataRows = allRows.slice(1).filter((r) => r.some((c) => c.trim() !== ''));
   return { headers, rows: dataRows };
 }
 
-function tryReSplitSingleColumn(headers: string[], rows: string[][]): { headers: string[]; rows: string[][] } | null {
-  const sample = headers.length === 1 ? headers[0] : (rows[0]?.[0] || '');
+function tryReSplitSingleColumn(
+  headers: string[],
+  rows: string[][],
+): { headers: string[]; rows: string[][] } | null {
+  const sample = headers.length === 1 ? headers[0] : rows[0]?.[0] || '';
   if (!sample) return null;
   const innerSep = detectSeparatorFromLine(sample);
   if (!KNOWN_SEPARATORS.includes(innerSep)) return null;
@@ -120,14 +130,12 @@ function tryReSplitSingleColumn(headers: string[], rows: string[][]): { headers:
 
   console.log('[CSV Import] Linhas com aspas externas detectadas — re-dividindo com delimitador:', innerSep);
 
-  const newHeaders = headers.length === 1
-    ? sample.split(innerSep).map(h => h.trim())
-    : headers;
+  const newHeaders =
+    headers.length === 1 ? sample.split(innerSep).map((h) => h.trim()) : headers;
 
-  const newRows = rows.map(row => {
+  const newRows = rows.map((row) => {
     if (row.length === 1) {
-      const inner = row[0];
-      return inner.split(innerSep);
+      return row[0].split(innerSep);
     }
     return row;
   });
