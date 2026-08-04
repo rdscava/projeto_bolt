@@ -20,6 +20,9 @@ interface PdfInput {
   servidorRf: string;
   servidorCargo: string;
   servidorRef: string;
+  servidorRelacaoJurAdm: string;
+  servidorJornada: string;
+  servidorSetor: string;
   tipo: '80%' | '100%';
   // 80%
   sexo?: string;
@@ -110,6 +113,9 @@ export function generatePdfHtml(input: PdfInput): string {
   <div><dt>RF</dt><dd>${e(input.servidorRf)}</dd></div>
   <div><dt>Cargo</dt><dd>${e(input.servidorCargo)}</dd></div>
   <div><dt>Referência</dt><dd>${e(input.servidorRef)}</dd></div>
+  <div><dt>Relação Jur-Adm</dt><dd>${e(input.servidorRelacaoJurAdm)}</dd></div>
+  <div><dt>Jornada</dt><dd>${e(input.servidorJornada)}</dd></div>
+  <div class="col-span-2"><dt>Nome do Setor</dt><dd>${e(input.servidorSetor)}</dd></div>
 </dl>
 
 ${is80 ? `

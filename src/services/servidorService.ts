@@ -52,9 +52,7 @@ export async function fetchAllServidores(): Promise<Servidor[]> {
 
 export async function searchServidorByRF(rf: string): Promise<Servidor | null> {
   const { data, error } = await supabase
-    .from('servidores')
-    .select('*')
-    .eq('rf', rf)
+    .rpc('find_servidor_by_rf_normalized', { p_rf: rf })
     .maybeSingle();
   if (error) throw error;
   return data ? mapServidor(data) : null;

@@ -3,9 +3,10 @@ import { useAppContext } from '../context/AppContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Search } from 'lucide-react';
+import { Search, Loader2 } from 'lucide-react';
 import { searchServidorByRF } from '../services/servidorService';
 import { formatRFMask } from '../lib/format';
+import { toast } from 'sonner';
 
 interface Props {
   extraFields?: boolean;
@@ -23,8 +24,17 @@ export default function ServidorHeader({ extraFields = true }: Props) {
       const found = await searchServidorByRF(rfInput);
       if (found) {
         setServidor(found);
+        toast.success(`Servidor localizado: ${found.nome}`);
+      } else {
+        toast.error('Nenhum servidor encontrado com esse RF');
       }
+    } catch {
+      toast.error('Erro ao buscar servidor');
     } finally { setLoading(false); }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') handleSearch();
   };
 
   return (
@@ -39,11 +49,12 @@ export default function ServidorHeader({ extraFields = true }: Props) {
             <Input
               value={rfInput}
               onChange={e => { setRfInput(formatRFMask(e.target.value)); }}
+              onKeyDown={handleKeyDown}
               placeholder="000.000.0"
               className="font-mono"
             />
             <Button variant="outline" size="icon" onClick={handleSearch} disabled={loading}>
-              <Search className="w-4 h-4" />
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
             </Button>
           </div>
         </div>
