@@ -1,5 +1,5 @@
 import type { Simulation, MediaRow } from '../types';
-import { parseDecimalBR, extractMMYYYY, competToSortKey, generateCompetencias } from './format';
+import { parseDecimalBR, extractMMYYYY, competToSortKey, generateCompetencias, buildIndexMap, getFatorAtualizacao } from './format';
 import { getTetoINSS, isInTetoRange } from '../data/teto-inss';
 
 export interface DemonstrativoResult {
@@ -60,7 +60,7 @@ export function calcDemonstrativo(sim: Simulation): DemonstrativoResult {
     return vinculoConfig.rppsPeriodos.some(p => p.de && p.ate && sk >= competToSortKey(p.de) && sk <= competToSortKey(p.ate));
   };
 
-  const indexMap = new Map(indices.map(i => [extractMMYYYY(i.compet), i.indice]));
+  const { map: indexMap, lastCompetSortKey } = buildIndexMap(indices);
   const allCompets = generateCompetencias(7, 1994, parseInt(endCompet.split('/')[0]), parseInt(endCompet.split('/')[1]));
   const withValues: { compet: string; valor: number }[] = [];
   for (const compet of allCompets) {
@@ -75,7 +75,7 @@ export function calcDemonstrativo(sim: Simulation): DemonstrativoResult {
 
   const rows: MediaRow[] = withValues.map((item, i) => {
     const [mm, yyyy] = item.compet.split('/');
-    const fator = indexMap.get(item.compet) || 1;
+    const fator = getFatorAtualizacao(item.compet, indexMap, lastCompetSortKey);
     return { seq: i + 1, mes: parseInt(mm), ano: parseInt(yyyy), valor: item.valor, fatorAtualizacao: fator, vantagemAtualizada: item.valor * fator };
   });
 

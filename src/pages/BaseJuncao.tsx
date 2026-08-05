@@ -11,11 +11,11 @@ import { Label } from '@/components/ui/label';
 import { Settings, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getTetoINSS, isInTetoRange } from '../data/teto-inss';
-import { parseDecimalBR, extractMMYYYY, competToSortKey, formatBRL, generateCompetencias, formatCompetAsDate } from '../lib/format';
+import { parseDecimalBR, extractMMYYYY, competToSortKey, formatBRL, generateCompetencias, formatCompetAsDate, buildIndexMap, getFatorAtualizacao } from '../lib/format';
 import type { BaseJuncaoRow, VinculoConfig } from '../types';
 
 export default function BaseJuncao() {
-  const { tipoCalculo, setTipoCalculo, sigpecData, sigpecFilter, admrhData, admrhFilter, averbacaoData, vinculoConfig, setVinculoConfig } = useAppContext();
+  const { tipoCalculo, setTipoCalculo, sigpecData, sigpecFilter, admrhData, admrhFilter, averbacaoData, indices, vinculoConfig, setVinculoConfig } = useAppContext();
   const [showVinculo, setShowVinculo] = useState(false);
   const [tempVinculo, setTempVinculo] = useState<VinculoConfig>(vinculoConfig);
 
@@ -72,6 +72,8 @@ export default function BaseJuncao() {
       });
     };
 
+    const { map: indexMap, lastCompetSortKey } = buildIndexMap(indices);
+
     const rows: BaseJuncaoRow[] = allCompets.map((compet, i) => {
       const valor = valueMap.get(compet) || 0;
       const isRpps = isRppsPeriod(compet);
@@ -88,11 +90,14 @@ export default function BaseJuncao() {
         }
       }
 
-      return { seq: i + 1, compet, valorOriginal: valor, tetoRef: teto, isTeto, isRpps, valorFinal };
+      const fator = getFatorAtualizacao(compet, indexMap, lastCompetSortKey);
+      const valorAtualizado = valorFinal * fator;
+
+      return { seq: i + 1, compet, valorOriginal: valor, tetoRef: teto, isTeto, isRpps, valorFinal, fatorAtualizacao: fator, valorAtualizado };
     });
 
     return rows;
-  }, [sigpecData, sigpecFilter, admrhData, admrhFilter, averbacaoData, tipoCalculo, vinculoConfig, endCompet]);
+  }, [sigpecData, sigpecFilter, admrhData, admrhFilter, averbacaoData, indices, tipoCalculo, vinculoConfig, endCompet]);
 
   const rowsWithValue = consolidatedRows.filter(r => r.valorFinal > 0);
   const totalCompets = consolidatedRows.length;
@@ -175,6 +180,8 @@ export default function BaseJuncao() {
               <TableHead className="text-right">Teto Máx. INSS</TableHead>
               <TableHead></TableHead>
               <TableHead className="text-right">Valor Final</TableHead>
+              <TableHead className="text-right">Fator Atualização</TableHead>
+              <TableHead className="text-right">Valor Atualizado</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -192,6 +199,8 @@ export default function BaseJuncao() {
                   </div>
                 </TableCell>
                 <TableCell className="text-right font-mono text-sm">{formatBRL(row.valorFinal)}</TableCell>
+                <TableCell className={`text-right font-mono text-sm ${row.fatorAtualizacao === 1 && indices.length > 0 ? 'text-orange-500' : ''}`}>{row.fatorAtualizacao.toFixed(6)}</TableCell>
+                <TableCell className="text-right font-mono text-sm">{formatBRL(row.valorAtualizado)}</TableCell>
               </TableRow>
             ))}
           </TableBody>

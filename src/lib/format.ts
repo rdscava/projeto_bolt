@@ -90,6 +90,38 @@ export function formatCompetAsDate(compet: string): string {
   return compet;
 }
 
+/**
+ * Given an array of index rows (compet + indice), returns a Map of compet -> indice.
+ * Also computes the last available index competency.
+ * Competencies after the last index competency use 1.000000 explicitly.
+ */
+export function buildIndexMap(indices: { compet: string; indice: number }[]): { map: Map<string, number>; lastCompetSortKey: number } {
+  const map = new Map<string, number>();
+  let lastCompetSortKey = 0;
+  for (const idx of indices) {
+    const c = extractMMYYYY(idx.compet);
+    if (!c) continue;
+    const sk = competToSortKey(c);
+    if (sk > lastCompetSortKey) lastCompetSortKey = sk;
+    map.set(c, idx.indice);
+  }
+  return { map, lastCompetSortKey };
+}
+
+/**
+ * Returns the index factor for a given competency.
+ * - If the competency exists in the index map, returns its value.
+ * - If the competency is AFTER the last index competency, returns 1.000000.
+ * - If no indices are loaded at all, returns 1.
+ */
+export function getFatorAtualizacao(compet: string, indexMap: Map<string, number>, lastCompetSortKey: number): number {
+  const known = indexMap.get(compet);
+  if (known !== undefined) return known;
+  const sk = competToSortKey(compet);
+  if (lastCompetSortKey > 0 && sk > lastCompetSortKey) return 1;
+  return 1;
+}
+
 export function roundExcel(value: number, decimals = 2): number {
   const factor = Math.pow(10, decimals);
   return Math.round((value + Number.EPSILON) * factor) / factor;

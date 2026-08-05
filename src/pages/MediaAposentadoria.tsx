@@ -4,7 +4,7 @@ import ServidorHeader from '../components/ServidorHeader';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { formatBRL, formatNumber, parseDecimalBR, extractMMYYYY, competToSortKey, generateCompetencias } from '../lib/format';
+import { formatBRL, formatNumber, parseDecimalBR, extractMMYYYY, competToSortKey, generateCompetencias, buildIndexMap, getFatorAtualizacao } from '../lib/format';
 import { getTetoINSS, isInTetoRange } from '../data/teto-inss';
 import type { MediaRow } from '../types';
 
@@ -52,11 +52,7 @@ export default function MediaAposentadoria() {
       return vinculoConfig.rppsPeriodos.some(p => p.de && p.ate && sk >= competToSortKey(p.de) && sk <= competToSortKey(p.ate));
     };
 
-    const indexMap = new Map<string, number>();
-    for (const idx of indices) {
-      const normalizedCompet = extractMMYYYY(idx.compet);
-      indexMap.set(normalizedCompet, idx.indice);
-    }
+    const { map: indexMap, lastCompetSortKey } = buildIndexMap(indices);
 
     const allCompets = generateCompetencias(7, 1994, parseInt(endCompet.split('/')[0]), parseInt(endCompet.split('/')[1]));
     const withValues: { compet: string; valor: number }[] = [];
@@ -74,7 +70,7 @@ export default function MediaAposentadoria() {
 
     const rows: MediaRow[] = withValues.map((item, i) => {
       const [mm, yyyy] = item.compet.split('/');
-      const fator = indexMap.get(item.compet) || 1;
+      const fator = getFatorAtualizacao(item.compet, indexMap, lastCompetSortKey);
       return {
         seq: i + 1, mes: parseInt(mm), ano: parseInt(yyyy),
         valor: item.valor, fatorAtualizacao: fator,

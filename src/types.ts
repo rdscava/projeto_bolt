@@ -86,6 +86,8 @@ export interface BaseJuncaoRow {
   isTeto: boolean;
   isRpps: boolean;
   valorFinal: number;
+  fatorAtualizacao: number;
+  valorAtualizado: number;
 }
 
 export interface MediaRow {
