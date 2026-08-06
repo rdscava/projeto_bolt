@@ -89,19 +89,27 @@ export default function Pagamento() {
       valorLiquido: calculo.valorLiquido,
       irTable: IR_TABLE_2025,
     });
-    const w = window.open('', '_blank');
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const w = window.open(url, '_blank');
     if (!w) { alert('Por favor, permita pop-ups para exportar o PDF.'); return; }
-    w.document.write(html);
-    w.document.close();
   };
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="text-xl font-bold">PAGAMENTO</h2>
-        <p className="text-sm text-muted-foreground">
-          Cálculo de descontos previdenciário e imposto de renda sobre o valor do Demonstrativo.
-        </p>
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-bold">PAGAMENTO</h2>
+          <p className="text-sm text-muted-foreground">
+            Cálculo de descontos previdenciário e imposto de renda sobre o valor do Demonstrativo.
+          </p>
+        </div>
+        {calculo && (
+          <Button variant="outline" onClick={handleExportPdf} className="gap-2 shrink-0">
+            <FileDown className="w-4 h-4" />
+            Exportar PDF
+          </Button>
+        )}
       </div>
 
       <ServidorHeader />
@@ -290,13 +298,7 @@ export default function Pagamento() {
 
               {/* Resultado Final */}
               <div className="rounded-lg border-2 border-primary/20 bg-primary/5 p-5 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-primary uppercase">Resultado Final</h3>
-                  <Button variant="outline" size="sm" onClick={handleExportPdf} className="gap-2">
-                    <FileDown className="w-4 h-4" />
-                    Exportar PDF
-                  </Button>
-                </div>
+                <h3 className="text-sm font-semibold text-primary uppercase">Resultado Final</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="bg-card p-4 rounded-lg">
                     <p className="text-xs text-muted-foreground">Valor do Provento</p>
