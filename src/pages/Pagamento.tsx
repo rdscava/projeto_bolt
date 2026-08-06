@@ -4,9 +4,11 @@ import ServidorHeader from '../components/ServidorHeader';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Calculator, Info, Lock } from 'lucide-react';
+import { Calculator, Info, Lock, FileDown } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { formatBRL, roundExcel } from '../lib/format';
 import { calcDemonstrativo } from '../lib/demonstrativoCalc';
+import { generatePagamentoPdfHtml } from '../lib/pdfGenerator';
 import { IR_TABLE_2025, calcIRRFNormal, calcRedutor, REDUTOR_PARAMS, LIMITE_ISENCAO_IR } from '../data/ir-table';
 
 const SALARIO_MINIMO_DEFAULT = 1620.0;
@@ -59,6 +61,39 @@ export default function Pagamento() {
       valorLiquido,
     };
   }, [temProvento, valorProvento, salarioMinimo]);
+
+  const handleExportPdf = () => {
+    if (!calculo) return;
+    const html = generatePagamentoPdfHtml({
+      servidorNome: sim?.servidor?.nome || '—',
+      servidorRf: sim?.servidor?.rf || '—',
+      servidorCargo: sim?.servidor?.cargo || '—',
+      servidorRef: sim?.servidor?.referencia || '—',
+      servidorRelacaoJurAdm: sim?.servidor?.relacaoJurAdm || '—',
+      servidorJornada: sim?.servidor?.jornada || '—',
+      servidorSetor: sim?.servidor?.nomeSetor || '—',
+      tipo: sim?.tipoCalculo === '80' ? '80%' : '100%',
+      valorProvento: calculo.valorProvento,
+      salarioMinimo: calculo.salarioMinimo,
+      basePrevidenciaria: calculo.basePrevidenciaria,
+      aliquotaPrevidenciaria: calculo.aliquotaPrevidenciaria,
+      descontoPrevidenciario: calculo.descontoPrevidenciario,
+      valorAposPrevidenciario: calculo.valorAposPrevidenciario,
+      irAliquota: calculo.irAliquota,
+      irrfBruto: calculo.irrfBruto,
+      parcelaDeduzir: calculo.parcelaDeduzir,
+      irrfNormal: calculo.irrfNormal,
+      redutor: calculo.redutor,
+      isento: calculo.isento,
+      impostoDevido: calculo.impostoDevido,
+      valorLiquido: calculo.valorLiquido,
+      irTable: IR_TABLE_2025,
+    });
+    const w = window.open('', '_blank');
+    if (!w) { alert('Por favor, permita pop-ups para exportar o PDF.'); return; }
+    w.document.write(html);
+    w.document.close();
+  };
 
   return (
     <div className="space-y-4">
@@ -255,7 +290,13 @@ export default function Pagamento() {
 
               {/* Resultado Final */}
               <div className="rounded-lg border-2 border-primary/20 bg-primary/5 p-5 space-y-3">
-                <h3 className="text-sm font-semibold text-primary uppercase">Resultado Final</h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-primary uppercase">Resultado Final</h3>
+                  <Button variant="outline" size="sm" onClick={handleExportPdf} className="gap-2">
+                    <FileDown className="w-4 h-4" />
+                    Exportar PDF
+                  </Button>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="bg-card p-4 rounded-lg">
                     <p className="text-xs text-muted-foreground">Valor do Provento</p>
