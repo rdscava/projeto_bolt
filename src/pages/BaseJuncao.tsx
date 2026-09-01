@@ -102,7 +102,7 @@ export default function BaseJuncao() {
   const rowsWithValue = consolidatedRows.filter(r => r.valorFinal > 0);
   const totalCompets = consolidatedRows.length;
 
-  // Cálculo especial 80%: BASE CALCULO FUNFIN de 03/2022 ÷ 31 × 18
+  // Cálculo especial 80%: BASE CALCULO FUNFIN de 03/2022 ÷ 31 × 18 × fator atualização
   const funfinValue = useMemo(() => {
     if (tipoCalculo !== '80') return 0;
     const sigFiltered = sigpecFilter.length > 0 ? sigpecData.filter(r => sigpecFilter.includes(r.nomeAbreviado)) : sigpecData;
@@ -113,7 +113,22 @@ export default function BaseJuncao() {
     return funfinRows.reduce((sum, r) => sum + parseDecimalBR(r.valor), 0);
   }, [sigpecData, sigpecFilter, tipoCalculo]);
 
-  const funfinAdjusted = funfinValue > 0 ? (funfinValue / 31) * 18 : 0;
+  const funfinProporcional = useMemo(() => {
+    if (funfinValue <= 0) return 0;
+    return (funfinValue / 31) * 18;
+  }, [funfinValue]);
+
+  const { map: indexMap, lastCompetSortKey } = useMemo(
+    () => buildIndexMap(indices),
+    [indices]
+  );
+
+  const funfinFator = useMemo(
+    () => getFatorAtualizacao('03/2022', indexMap, lastCompetSortKey),
+    [indexMap, lastCompetSortKey]
+  );
+
+  const funfinAdjusted = funfinProporcional > 0 ? funfinProporcional * funfinFator : 0;
 
   const addPeriodo = (type: 'rgps' | 'rpps') => {
     const key = type === 'rgps' ? 'rgpsPeriodos' : 'rppsPeriodos';
@@ -165,8 +180,13 @@ export default function BaseJuncao() {
           </div>
         </div>
         {tipoCalculo === '80' && funfinValue > 0 && (
-          <div className="mt-3 p-3 bg-muted/50 rounded text-sm">
-            <strong>BASE CALCULO FUNFIN (03/2022):</strong> {formatBRL(funfinValue)} ÷ 31 × 18 = <strong>{formatBRL(funfinAdjusted)}</strong>
+          <div className="mt-3 p-3 bg-muted/50 rounded text-sm space-y-1">
+            <div>
+              <strong>BASE CALCULO FUNFIN (03/2022):</strong> {formatBRL(funfinValue)} ÷ 31 × 18 = <strong>{formatBRL(funfinProporcional)}</strong>
+            </div>
+            <div>
+              Fator de atualização (03/2022): <strong>{funfinFator.toFixed(6)}</strong> → Valor Atualizado: <strong>{formatBRL(funfinAdjusted)}</strong>
+            </div>
           </div>
         )}
       </div>

@@ -37,7 +37,7 @@ export default function PasteImport({ onImport, onConvertDates, placeholder }: P
         </Button>
         {onConvertDates && (
           <Button variant="outline" onClick={onConvertDates} className="gap-2">
-            <Calendar className="w-4 h-4" /> Converter Datas (mm/aaaa → dd/mm/aaaa)
+            <Calendar className="w-4 h-4" /> Converter Datas (mmm/aa → mm/aaaa)
           </Button>
         )}
       </div>

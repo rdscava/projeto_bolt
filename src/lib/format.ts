@@ -126,3 +126,51 @@ export function roundExcel(value: number, decimals = 2): number {
   const factor = Math.pow(10, decimals);
   return Math.round((value + Number.EPSILON) * factor) / factor;
 }
+
+const MONTHS_PT: Record<string, number> = {
+  jan: 1, fev: 2, mar: 3, abr: 4, mai: 5, jun: 6,
+  jul: 7, ago: 8, set: 9, out: 10, nov: 11, dez: 12,
+};
+
+/**
+ * Converts a Folha/Compet. value into mm/yyyy.
+ * Handles: mmm/aa (e.g. "mar/22"), mmm/yyyy, mm/yyyy, dd/mm/yyyy, yyyy-mm-dd,
+ * and already-converted mm/yyyy. Returns null for empty/unparseable input.
+ */
+export function parseCompetencia(value: string): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  // dd/mm/yyyy → mm/yyyy
+  const match3 = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (match3) return `${match3[2].padStart(2, '0')}/${match3[3]}`;
+
+  // mm/yyyy → already correct
+  const match2 = trimmed.match(/^(\d{1,2})\/(\d{4})$/);
+  if (match2) return `${match2[1].padStart(2, '0')}/${match2[2]}`;
+
+  // yyyy-mm-dd → mm/yyyy
+  const matchIso = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (matchIso) return `${matchIso[2]}/${matchIso[1]}`;
+
+  // mmm/aa or mmm/yyyy (Portuguese month abbreviation)
+  const matchPt = trimmed.match(/^([a-zç]{3,})\/(\d{2,4})$/i);
+  if (matchPt) {
+    const monthKey = matchPt[1].toLowerCase().slice(0, 3);
+    const monthNum = MONTHS_PT[monthKey];
+    if (monthNum) {
+      const rawYear = parseInt(matchPt[2], 10);
+      const fullYear = rawYear < 100 ? 2000 + rawYear : rawYear;
+      return `${String(monthNum).padStart(2, '0')}/${fullYear}`;
+    }
+  }
+
+  return null;
+}
+
+/** Normalize a Folha/Compet. value to mm/yyyy for display, or '' if unparseable. */
+export function normalizeCompetencia(value: string): string {
+  const parsed = parseCompetencia(value);
+  return parsed ?? value;
+}

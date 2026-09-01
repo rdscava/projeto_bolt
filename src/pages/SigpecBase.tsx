@@ -8,7 +8,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Trash2, Filter, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { toast } from 'sonner';
-import { convertDateMMYYYY, isMMYYYYFormat, competToSortKey } from '../lib/format';
+import { parseCompetencia, competToSortKey } from '../lib/format';
 import type { SigpecRow } from '../types';
 
 type SortField = 'consol' | 'rub' | 'tp' | 'nomeAbreviado' | 'complemento' | 'tipoFolha' | 'tipoCalc' | 'folha' | 'no' | 'valor' | 'pens' | 'compet';
@@ -67,11 +67,11 @@ export default function SigpecBase() {
       complemento: cols[4]?.trim() || '',
       tipoFolha: cols[5]?.trim() || '',
       tipoCalc: cols[6]?.trim() || '',
-      folha: cols[7]?.trim() || '',
+      folha: parseCompetencia(cols[7]?.trim() || '') || cols[7]?.trim() || '',
       no: cols[8]?.trim() || '',
       valor: cols[9]?.trim() || '',
       pens: cols[10]?.trim() || '',
-      compet: cols[11]?.trim() || '',
+      compet: parseCompetencia(cols[11]?.trim() || '') || cols[11]?.trim() || '',
     }));
     setSigpecData([...sigpecData, ...newRows]);
     toast.success(`${newRows.length} linhas importadas!`);
@@ -82,12 +82,14 @@ export default function SigpecBase() {
     const updated = sigpecData.map(r => {
       let folha = r.folha;
       let compet = r.compet;
-      if (isMMYYYYFormat(folha)) { folha = convertDateMMYYYY(folha); converted++; }
-      if (isMMYYYYFormat(compet)) { compet = convertDateMMYYYY(compet); converted++; }
+      const fParsed = parseCompetencia(folha);
+      if (fParsed && fParsed !== folha) { folha = fParsed; converted++; }
+      const cParsed = parseCompetencia(compet);
+      if (cParsed && cParsed !== compet) { compet = cParsed; converted++; }
       return { ...r, folha, compet };
     });
     setSigpecData(updated);
-    toast.success(converted > 0 ? `${converted} datas convertidas!` : 'Nenhuma data no formato mm/aaaa encontrada.');
+    toast.success(converted > 0 ? `${converted} datas convertidas!` : 'Nenhuma data para converter encontrada.');
   };
 
   const toggleSelect = (id: string) => {
