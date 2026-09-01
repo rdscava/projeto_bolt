@@ -18,6 +18,9 @@ export default function BaseJuncao() {
   const { tipoCalculo, setTipoCalculo, sigpecData, sigpecFilter, admrhData, admrhFilter, averbacaoData, indices, vinculoConfig, setVinculoConfig } = useAppContext();
   const [showVinculo, setShowVinculo] = useState(false);
   const [tempVinculo, setTempVinculo] = useState<VinculoConfig>(vinculoConfig);
+  const [editingCompet, setEditingCompet] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState('');
+  const [overrides, setOverrides] = useState<Record<string, number>>({});
 
   const endCompet = tipoCalculo === '80' ? '03/2022' : (() => {
     const now = new Date();
@@ -91,13 +94,16 @@ export default function BaseJuncao() {
       }
 
       const fator = getFatorAtualizacao(compet, indexMap, lastCompetSortKey);
-      const valorAtualizado = valorFinal * fator;
+      const overridden = overrides[compet];
+      const valorFinalEffective = overridden !== undefined ? overridden : valorFinal;
+      const isOverridden = overridden !== undefined;
+      const valorAtualizado = valorFinalEffective * fator;
 
-      return { seq: i + 1, compet, valorOriginal: valor, tetoRef: teto, isTeto, isRpps, valorFinal, fatorAtualizacao: fator, valorAtualizado };
+      return { seq: i + 1, compet, valorOriginal: valor, tetoRef: teto, isTeto, isRpps, valorFinal: valorFinalEffective, fatorAtualizacao: fator, valorAtualizado, isOverridden };
     });
 
     return rows;
-  }, [sigpecData, sigpecFilter, admrhData, admrhFilter, averbacaoData, indices, tipoCalculo, vinculoConfig, endCompet]);
+  }, [sigpecData, sigpecFilter, admrhData, admrhFilter, averbacaoData, indices, tipoCalculo, vinculoConfig, endCompet, overrides]);
 
   const rowsWithValue = consolidatedRows.filter(r => r.valorFinal > 0);
   const totalCompets = consolidatedRows.length;
@@ -178,6 +184,16 @@ export default function BaseJuncao() {
             Meses com contribuição: <strong>{rowsWithValue.length}</strong>
             {tipoCalculo === '80' && <> — 80% = <strong>{Math.floor(rowsWithValue.length * 0.8)}</strong> meses</>}
           </div>
+          {Object.keys(overrides).length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mt-5 text-xs"
+              onClick={() => { setOverrides({}); toast.success('Valores restaurados!'); }}
+            >
+              Restaurar valores originais
+            </Button>
+          )}
         </div>
         {tipoCalculo === '80' && funfinValue > 0 && (
           <div className="mt-3 p-3 bg-muted/50 rounded text-sm space-y-1">
@@ -218,7 +234,39 @@ export default function BaseJuncao() {
                     {row.isRpps && <Badge variant="outline" className="text-blue-600 border-blue-300 text-xs">RPPS</Badge>}
                   </div>
                 </TableCell>
-                <TableCell className="text-right font-mono text-sm">{formatBRL(row.valorFinal)}</TableCell>
+                <TableCell
+                  className="text-right font-mono text-sm cursor-pointer"
+                  onClick={() => {
+                    if (editingCompet !== row.compet) {
+                      setEditingCompet(row.compet);
+                      setEditValue(String(row.valorFinal).replace('.', ','));
+                    }
+                  }}
+                >
+                  {editingCompet === row.compet ? (
+                    <input
+                      autoFocus
+                      type="text"
+                      value={editValue}
+                      onChange={e => setEditValue(e.target.value)}
+                      onClick={e => e.stopPropagation()}
+                      onBlur={() => {
+                        const parsed = parseDecimalBR(editValue);
+                        setOverrides(prev => ({ ...prev, [row.compet]: parsed }));
+                        setEditingCompet(null);
+                      }}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); }
+                        if (e.key === 'Escape') { setEditingCompet(null); }
+                      }}
+                      className="w-28 text-right font-mono text-sm px-1 py-0 border border-primary rounded bg-background outline-none"
+                    />
+                  ) : (
+                    <span className={row.isOverridden ? 'text-primary font-bold' : ''}>
+                      {formatBRL(row.valorFinal)}
+                    </span>
+                  )}
+                </TableCell>
                 <TableCell className={`text-right font-mono text-sm ${row.fatorAtualizacao === 1 && indices.length > 0 ? 'text-orange-500' : ''}`}>{row.fatorAtualizacao.toFixed(6)}</TableCell>
                 <TableCell className="text-right font-mono text-sm">{formatBRL(row.valorAtualizado)}</TableCell>
               </TableRow>

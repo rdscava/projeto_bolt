@@ -88,6 +88,7 @@ export interface BaseJuncaoRow {
   valorFinal: number;
   fatorAtualizacao: number;
   valorAtualizado: number;
+  isOverridden?: boolean;
 }
 
 export interface MediaRow {
