@@ -59,7 +59,7 @@ export default function Demonstrativo() {
   }, [tipoCalculo, sigpecData, sigpecFilter, admrhData, admrhFilter, averbacaoData, indices, vinculoConfig]);
 
   // Cálculos 80%
-  const coeficiente = sexo === 'MULHER' ? 0.0091324 : 0.0087671;
+  const coeficiente = sexo === 'MULHER' ? 0.0091324 : 0.0078277;
   const percentual = tempoExcedente * coeficiente;
   const totalRubricas = rubricas80.reduce((s, r) => s + r.valor, 0);
   const percFraction = percentual / 100;

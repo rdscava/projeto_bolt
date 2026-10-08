@@ -89,7 +89,7 @@ export function calcDemonstrativo(sim: Simulation): DemonstrativoResult {
   const di = display.length > 0 ? `${String(display[0].mes).padStart(2, '0')}/${display[0].ano}` : '-';
   const df = display.length > 0 ? `${String(display[display.length - 1].mes).padStart(2, '0')}/${display[display.length - 1].ano}` : '-';
 
-  const coeficiente = demonstrativo.sexo === 'MULHER' ? 0.0091324 : 0.0087671;
+  const coeficiente = demonstrativo.sexo === 'MULHER' ? 0.0091324 : 0.0078277;
   const percentual = demonstrativo.tempoExcedente * coeficiente;
   const totalRubricas = demonstrativo.rubricas80.reduce((s, r) => s + r.valor, 0);
   const percFraction = percentual / 100;
