@@ -98,6 +98,7 @@ export interface MediaRow {
   valor: number;
   fatorAtualizacao: number;
   vantagemAtualizada: number;
+  excluded?: boolean;
 }
 
 export interface RubricaOption {

@@ -227,7 +227,8 @@ export function generatePdfHtml(input: PdfInput): string {
   const calcRows = [...input.allRows].sort((a, b) => (a.ano * 100 + a.mes) - (b.ano * 100 + b.mes));
   const calcHtml = calcRows.map(r => {
     const cls = r.excluded ? ' class="excl"' : '';
-    return `<tr${cls}><td>${r.seq}</td><td>${String(r.mes).padStart(2, '0')}</td><td>${r.ano}</td><td class="r">R$ ${fmt(r.valor)}</td><td class="r">${r.fator.toFixed(6)}</td><td class="r">R$ ${fmt(r.atualizada)}</td></tr>`;
+    const excLabel = r.excluded ? ' (excluído)' : '';
+    return `<tr${cls}><td>${r.seq}</td><td>${String(r.mes).padStart(2, '0')}</td><td>${r.ano}</td><td class="r">R$ ${fmt(r.valor)}</td><td class="r">${r.fator.toFixed(6)}</td><td class="r">R$ ${fmt(r.atualizada)}${excLabel}</td></tr>`;
   }).join('');
 
   return `<!doctype html>

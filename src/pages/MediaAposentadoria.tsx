@@ -82,17 +82,19 @@ export default function MediaAposentadoria() {
   }, [sigpecData, sigpecFilter, admrhData, admrhFilter, averbacaoData, indices, tipoCalculo, vinculoConfig, endCompet]);
 
   const totalContrib = mediaRows.length;
-  const numMeses = totalContrib;
+  const numMeses = tipoCalculo === '80' ? Math.floor(totalContrib * 0.8) : totalContrib;
 
   const sortedRows = useMemo(() => {
-    return [...mediaRows].sort((a, b) => b.vantagemAtualizada - a.vantagemAtualizada);
-  }, [mediaRows]);
+    const sorted = [...mediaRows].sort((a, b) => b.vantagemAtualizada - a.vantagemAtualizada);
+    return sorted.map((r, i) => ({ ...r, excluded: tipoCalculo === '80' && i >= numMeses }));
+  }, [mediaRows, tipoCalculo, numMeses]);
 
   const displayRows = useMemo(() => {
     return [...sortedRows].sort((a, b) => (a.ano * 100 + a.mes) - (b.ano * 100 + b.mes)).map((r, i) => ({ ...r, seq: i + 1 }));
   }, [sortedRows]);
 
-  const somaMaiores = sortedRows.reduce((s, r) => s + r.vantagemAtualizada, 0);
+  const includedRows = sortedRows.filter(r => !r.excluded);
+  const somaMaiores = includedRows.reduce((s, r) => s + r.vantagemAtualizada, 0);
   const media = numMeses > 0 ? somaMaiores / numMeses : 0;
 
   const dataInicio = displayRows.length > 0 ? `${String(displayRows[0].mes).padStart(2, '0')}/${displayRows[0].ano}` : '-';
@@ -134,13 +136,13 @@ export default function MediaAposentadoria() {
           </TableHeader>
           <TableBody>
             {displayRows.map(row => (
-              <TableRow key={`${row.mes}-${row.ano}`}>
+              <TableRow key={`${row.mes}-${row.ano}`} className={row.excluded ? 'opacity-50' : ''}>
                 <TableCell>{row.seq}</TableCell>
                 <TableCell>{row.mes}</TableCell>
                 <TableCell>{row.ano}</TableCell>
                 <TableCell className="text-right font-mono">{formatNumber(row.valor)}</TableCell>
                 <TableCell className={`text-right font-mono ${row.fatorAtualizacao === 1 && indices.length > 0 ? 'text-orange-500' : ''}`}>{row.fatorAtualizacao.toFixed(6)}</TableCell>
-                <TableCell className="text-right font-mono">{formatNumber(row.vantagemAtualizada)}</TableCell>
+                <TableCell className="text-right font-mono">{formatNumber(row.vantagemAtualizada)}{row.excluded ? ' (excluído)' : ''}</TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -158,13 +160,19 @@ export default function MediaAposentadoria() {
             <span className="text-muted-foreground">Número de meses a considerar</span>
             <strong>{numMeses}</strong>
           </div>
+          {tipoCalculo === '80' && (
+            <div className="flex justify-between py-1 border-b border-border">
+              <span className="text-muted-foreground">Fração de 80% (meses considerados)</span>
+              <strong>{numMeses}</strong>
+            </div>
+          )}
           <div className="flex justify-between py-1 border-b border-border">
-            <span className="text-muted-foreground">Soma dos salários de contribuição atualizados</span>
+            <span className="text-muted-foreground">Soma dos {numMeses} maiores salários atualizados</span>
             <strong>{formatBRL(somaMaiores)}</strong>
           </div>
         </div>
         <div className="bg-primary/5 p-4 rounded-lg flex justify-between items-center">
-          <span className="font-bold">Média aritmética dos salários de contribuição atualizados</span>
+          <span className="font-bold">Média aritmética dos {numMeses} maiores salários de contribuição atualizados</span>
           <span className="text-xl font-bold text-primary">{formatBRL(media)}</span>
         </div>
         <div className="grid grid-cols-2 gap-3 text-sm">

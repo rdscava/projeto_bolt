@@ -47,10 +47,12 @@ export default function Demonstrativo() {
     }
     const rows: MediaRow[] = withValues.map((item, i) => { const [mm, yyyy] = item.compet.split('/'); const fator = indexMap.get(item.compet) || 1; return { seq: i + 1, mes: parseInt(mm), ano: parseInt(yyyy), valor: item.valor, fatorAtualizacao: fator, vantagemAtualizada: item.valor * fator }; });
     const tc = rows.length;
-    const nm = tc;
+    const nm = tipoCalculo === '80' ? Math.floor(tc * 0.8) : tc;
     const sorted = [...rows].sort((a, b) => b.vantagemAtualizada - a.vantagemAtualizada);
-    const top = sorted;
-    const display = [...top].sort((a, b) => (a.ano * 100 + a.mes) - (b.ano * 100 + b.mes)).map((r, i) => ({ ...r, seq: i + 1 }));
+    const top = tipoCalculo === '80' ? sorted.slice(0, nm) : sorted;
+    const includedSet = new Set(top.map(r => `${r.mes}-${r.ano}`));
+    const displayAll = sorted.map(r => ({ ...r, excluded: tipoCalculo === '80' && !includedSet.has(`${r.mes}-${r.ano}`) }));
+    const display = [...displayAll].sort((a, b) => (a.ano * 100 + a.mes) - (b.ano * 100 + b.mes)).map((r, i) => ({ ...r, seq: i + 1 }));
     const sm = top.reduce((s, r) => s + r.vantagemAtualizada, 0);
     const m = nm > 0 ? sm / nm : 0;
     const di = display.length > 0 ? `${String(display[0].mes).padStart(2, '0')}/${display[0].ano}` : '-';
@@ -155,7 +157,7 @@ export default function Demonstrativo() {
         porcentagemBase: tipoCalculo === '100' ? porcentagemBase : undefined,
         tipoAposentadoria: tipoCalculo === '100' ? tipoAposentadoria : undefined,
         mediaTimesBase: tipoCalculo === '100' ? mediaTimesBase : undefined,
-        allRows: displayRows.map(r => ({ seq: r.seq, mes: r.mes, ano: r.ano, valor: r.valor, fator: r.fatorAtualizacao, atualizada: r.vantagemAtualizada })),
+        allRows: displayRows.map(r => ({ seq: r.seq, mes: r.mes, ano: r.ano, valor: r.valor, fator: r.fatorAtualizacao, atualizada: r.vantagemAtualizada, excluded: r.excluded })),
         totalContrib,
         numMeses,
         somaMaiores,
