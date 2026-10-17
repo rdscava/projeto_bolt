@@ -20,7 +20,7 @@ export interface DemonstrativoResult {
 }
 
 export function calcDemonstrativo(sim: Simulation): DemonstrativoResult {
-  const { tipoCalculo, indices, sigpecBase, admrh, averbacao, vinculoConfig, demonstrativo } = sim;
+  const { tipoCalculo, indices, sigpecBase, admrh, averbacao, vinculoConfig, demonstrativo, baseJuncaoOverrides } = sim;
 
   const endCompet = tipoCalculo === '80' ? '03/2022' : (() => {
     const now = new Date();
@@ -65,11 +65,13 @@ export function calcDemonstrativo(sim: Simulation): DemonstrativoResult {
   const withValues: { compet: string; valor: number }[] = [];
   for (const compet of allCompets) {
     let valor = valueMap.get(compet) || 0;
-    if (valor <= 0) continue;
+    if (valor <= 0 && !(compet in baseJuncaoOverrides)) continue;
     if (isInTetoRange(compet) && !isRppsPeriod(compet) && vinculoConfig.rgpsEnabled) {
       const teto = getTetoINSS(compet);
       if (teto && valor > teto) valor = teto;
     }
+    if (compet in baseJuncaoOverrides) valor = baseJuncaoOverrides[compet];
+    if (valor <= 0) continue;
     withValues.push({ compet, valor });
   }
 

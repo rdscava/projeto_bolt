@@ -34,6 +34,8 @@ interface AppState {
   setAverbacaoData: (d: AverbacaoRow[]) => void;
   vinculoConfig: VinculoConfig;
   setVinculoConfig: (v: VinculoConfig) => void;
+  baseJuncaoOverrides: Record<string, number>;
+  setBaseJuncaoOverrides: (o: Record<string, number>) => void;
   sexo: 'HOMEM' | 'MULHER';
   setSexo: (s: 'HOMEM' | 'MULHER') => void;
   tempoExcedente: number;
@@ -131,6 +133,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const vinculoConfig = sim.vinculoConfig;
   const setVinculoConfig = useCallback((v: VinculoConfig) => updateSection('vinculoConfig', v), [updateSection]);
 
+  const baseJuncaoOverrides = sim.baseJuncaoOverrides;
+  const setBaseJuncaoOverrides = useCallback((o: Record<string, number>) => updateSection('baseJuncaoOverrides', o), [updateSection]);
+
   const sexo = sim.demonstrativo.sexo;
   const setSexo = useCallback((s: 'HOMEM' | 'MULHER') =>
     updateSection('demonstrativo', { ...sim.demonstrativo, sexo: s }), [updateSection, sim.demonstrativo]);
@@ -159,6 +164,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       indices, setIndices, sigpecData, setSigpecData, sigpecFilter, setSigpecFilter,
       admrhData, setAdmrhData, admrhFilter, setAdmrhFilter,
       averbacaoData, setAverbacaoData, vinculoConfig, setVinculoConfig,
+      baseJuncaoOverrides, setBaseJuncaoOverrides,
       sexo, setSexo, tempoExcedente, setTempoExcedente, rubricas80, setRubricas80,
       porcentagemBase, setPorcentagemBase, tipoAposentadoria, setTipoAposentadoria,
     }}>

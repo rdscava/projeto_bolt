@@ -133,6 +133,7 @@ export interface Simulation {
   admrh: { data: AdmrhRow[]; filter: string[] };
   averbacao: { data: AverbacaoRow[] };
   vinculoConfig: VinculoConfig;
+  baseJuncaoOverrides: Record<string, number>;
   demonstrativo: {
     sexo: 'HOMEM' | 'MULHER';
     tempoExcedente: number;
@@ -155,6 +156,7 @@ export function createEmptySimulation(): Simulation {
     admrh: { data: [], filter: [] },
     averbacao: { data: [] },
     vinculoConfig: { rgpsEnabled: true, rppsEnabled: true, rgpsPeriodos: [], rppsPeriodos: [] },
+    baseJuncaoOverrides: {},
     demonstrativo: {
       sexo: 'MULHER',
       tempoExcedente: 0,

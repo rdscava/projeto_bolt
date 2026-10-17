@@ -15,12 +15,11 @@ import { parseDecimalBR, extractMMYYYY, competToSortKey, formatBRL, generateComp
 import type { BaseJuncaoRow, VinculoConfig } from '../types';
 
 export default function BaseJuncao() {
-  const { tipoCalculo, setTipoCalculo, sigpecData, sigpecFilter, admrhData, admrhFilter, averbacaoData, indices, vinculoConfig, setVinculoConfig } = useAppContext();
+  const { tipoCalculo, setTipoCalculo, sigpecData, sigpecFilter, admrhData, admrhFilter, averbacaoData, indices, vinculoConfig, setVinculoConfig, baseJuncaoOverrides: overrides, setBaseJuncaoOverrides: setOverrides } = useAppContext();
   const [showVinculo, setShowVinculo] = useState(false);
   const [tempVinculo, setTempVinculo] = useState<VinculoConfig>(vinculoConfig);
   const [editingCompet, setEditingCompet] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
-  const [overrides, setOverrides] = useState<Record<string, number>>({});
 
   const endCompet = tipoCalculo === '80' ? '03/2022' : (() => {
     const now = new Date();
@@ -104,6 +103,7 @@ export default function BaseJuncao() {
 
     return rows;
   }, [sigpecData, sigpecFilter, admrhData, admrhFilter, averbacaoData, indices, tipoCalculo, vinculoConfig, endCompet, overrides]);
+
 
   const rowsWithValue = consolidatedRows.filter(r => r.valorFinal > 0);
   const totalCompets = consolidatedRows.length;
@@ -252,7 +252,7 @@ export default function BaseJuncao() {
                       onClick={e => e.stopPropagation()}
                       onBlur={() => {
                         const parsed = parseDecimalBR(editValue);
-                        setOverrides(prev => ({ ...prev, [row.compet]: parsed }));
+                        setOverrides({ ...overrides, [row.compet]: parsed });
                         setEditingCompet(null);
                       }}
                       onKeyDown={e => {

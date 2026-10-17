@@ -9,7 +9,7 @@ import { getTetoINSS, isInTetoRange } from '../data/teto-inss';
 import type { MediaRow } from '../types';
 
 export default function MediaAposentadoria() {
-  const { tipoCalculo, setTipoCalculo, sigpecData, sigpecFilter, admrhData, admrhFilter, averbacaoData, indices, vinculoConfig } = useAppContext();
+  const { tipoCalculo, setTipoCalculo, sigpecData, sigpecFilter, admrhData, admrhFilter, averbacaoData, indices, vinculoConfig, baseJuncaoOverrides } = useAppContext();
 
   const endCompet = tipoCalculo === '80' ? '03/2022' : (() => {
     const now = new Date();
@@ -59,12 +59,14 @@ export default function MediaAposentadoria() {
 
     for (const compet of allCompets) {
       let valor = valueMap.get(compet) || 0;
-      if (valor <= 0) continue;
+      if (valor <= 0 && !(compet in baseJuncaoOverrides)) continue;
       const isRpps = isRppsPeriod(compet);
       if (isInTetoRange(compet) && !isRpps && vinculoConfig.rgpsEnabled) {
         const teto = getTetoINSS(compet);
         if (teto && valor > teto) valor = teto;
       }
+      if (compet in baseJuncaoOverrides) valor = baseJuncaoOverrides[compet];
+      if (valor <= 0) continue;
       withValues.push({ compet, valor });
     }
 
@@ -79,7 +81,7 @@ export default function MediaAposentadoria() {
     });
 
     return rows;
-  }, [sigpecData, sigpecFilter, admrhData, admrhFilter, averbacaoData, indices, tipoCalculo, vinculoConfig, endCompet]);
+  }, [sigpecData, sigpecFilter, admrhData, admrhFilter, averbacaoData, indices, tipoCalculo, vinculoConfig, endCompet, baseJuncaoOverrides]);
 
   const totalContrib = mediaRows.length;
   const numMeses = tipoCalculo === '80' ? Math.floor(totalContrib * 0.8) : totalContrib;

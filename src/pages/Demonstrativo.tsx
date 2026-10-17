@@ -19,7 +19,7 @@ import type { MediaRow, Simulation } from '../types';
 
 export default function Demonstrativo() {
   const ctx = useAppContext();
-  const { servidor, tipoCalculo, setTipoCalculo, sexo, setSexo, tempoExcedente, setTempoExcedente, rubricas80, setRubricas80, porcentagemBase, setPorcentagemBase, tipoAposentadoria, setTipoAposentadoria, indices, sigpecData, sigpecFilter, admrhData, admrhFilter, averbacaoData, vinculoConfig, clearAll, setSimulacaoSalva, simulacaoSalva } = ctx;
+  const { servidor, tipoCalculo, setTipoCalculo, sexo, setSexo, tempoExcedente, setTempoExcedente, rubricas80, setRubricas80, porcentagemBase, setPorcentagemBase, tipoAposentadoria, setTipoAposentadoria, indices, sigpecData, sigpecFilter, admrhData, admrhFilter, averbacaoData, vinculoConfig, baseJuncaoOverrides, clearAll, setSimulacaoSalva, simulacaoSalva } = ctx;
 
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -41,8 +41,10 @@ export default function Demonstrativo() {
     const withValues: { compet: string; valor: number }[] = [];
     for (const compet of allCompets) {
       let valor = valueMap.get(compet) || 0;
-      if (valor <= 0) continue;
+      if (valor <= 0 && !(compet in baseJuncaoOverrides)) continue;
       if (isInTetoRange(compet) && !isRppsPeriod(compet) && vinculoConfig.rgpsEnabled) { const teto = getTetoINSS(compet); if (teto && valor > teto) valor = teto; }
+      if (compet in baseJuncaoOverrides) valor = baseJuncaoOverrides[compet];
+      if (valor <= 0) continue;
       withValues.push({ compet, valor });
     }
     const rows: MediaRow[] = withValues.map((item, i) => { const [mm, yyyy] = item.compet.split('/'); const fator = indexMap.get(item.compet) || 1; return { seq: i + 1, mes: parseInt(mm), ano: parseInt(yyyy), valor: item.valor, fatorAtualizacao: fator, vantagemAtualizada: item.valor * fator }; });
@@ -58,7 +60,7 @@ export default function Demonstrativo() {
     const di = display.length > 0 ? `${String(display[0].mes).padStart(2, '0')}/${display[0].ano}` : '-';
     const df = display.length > 0 ? `${String(display[display.length - 1].mes).padStart(2, '0')}/${display[display.length - 1].ano}` : '-';
     return { media: m, numMeses: nm, totalContrib: tc, somaMaiores: sm, displayRows: display, dataInicio: di, dataFim: df };
-  }, [tipoCalculo, sigpecData, sigpecFilter, admrhData, admrhFilter, averbacaoData, indices, vinculoConfig]);
+  }, [tipoCalculo, sigpecData, sigpecFilter, admrhData, admrhFilter, averbacaoData, indices, vinculoConfig, baseJuncaoOverrides]);
 
   // Cálculos 80%
   const coeficiente = sexo === 'MULHER' ? 0.0091324 : 0.0078277;
@@ -107,6 +109,7 @@ export default function Demonstrativo() {
         admrh: { data: admrhData, filter: admrhFilter },
         averbacao: { data: averbacaoData },
         vinculoConfig,
+        baseJuncaoOverrides,
         demonstrativo: { sexo, tempoExcedente, rubricas80, porcentagemBase, tipoAposentadoria },
         dataUltimaAlteracao: new Date().toISOString(),
       };
@@ -131,7 +134,7 @@ export default function Demonstrativo() {
     const timer = setTimeout(() => { handleSave(); }, 3000);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sigpecData, sigpecFilter, admrhData, admrhFilter, averbacaoData, indices, vinculoConfig, rubricas80, sexo, tempoExcedente, porcentagemBase, tipoAposentadoria, tipoCalculo, servidor]);
+  }, [sigpecData, sigpecFilter, admrhData, admrhFilter, averbacaoData, indices, vinculoConfig, rubricas80, sexo, tempoExcedente, porcentagemBase, tipoAposentadoria, tipoCalculo, servidor, baseJuncaoOverrides]);
 
   const handleExport = () => {
     if (!servidor) { toast.error('Selecione um servidor'); return; }
