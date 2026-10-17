@@ -47,9 +47,9 @@ export default function Demonstrativo() {
     }
     const rows: MediaRow[] = withValues.map((item, i) => { const [mm, yyyy] = item.compet.split('/'); const fator = indexMap.get(item.compet) || 1; return { seq: i + 1, mes: parseInt(mm), ano: parseInt(yyyy), valor: item.valor, fatorAtualizacao: fator, vantagemAtualizada: item.valor * fator }; });
     const tc = rows.length;
-    const nm = tipoCalculo === '80' ? Math.floor(tc * 0.8) : tc;
+    const nm = tc;
     const sorted = [...rows].sort((a, b) => b.vantagemAtualizada - a.vantagemAtualizada);
-    const top = tipoCalculo === '80' ? sorted.slice(0, nm) : sorted;
+    const top = sorted;
     const display = [...top].sort((a, b) => (a.ano * 100 + a.mes) - (b.ano * 100 + b.mes)).map((r, i) => ({ ...r, seq: i + 1 }));
     const sm = top.reduce((s, r) => s + r.vantagemAtualizada, 0);
     const m = nm > 0 ? sm / nm : 0;

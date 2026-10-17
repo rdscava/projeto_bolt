@@ -80,9 +80,9 @@ export function calcDemonstrativo(sim: Simulation): DemonstrativoResult {
   });
 
   const tc = rows.length;
-  const nm = tipoCalculo === '80' ? Math.floor(tc * 0.8) : tc;
+  const nm = tc;
   const sorted = [...rows].sort((a, b) => b.vantagemAtualizada - a.vantagemAtualizada);
-  const top = tipoCalculo === '80' ? sorted.slice(0, nm) : sorted;
+  const top = sorted;
   const display = [...top].sort((a, b) => (a.ano * 100 + a.mes) - (b.ano * 100 + b.mes)).map((r, i) => ({ ...r, seq: i + 1 }));
   const sm = top.reduce((s, r) => s + r.vantagemAtualizada, 0);
   const m = nm > 0 ? sm / nm : 0;
