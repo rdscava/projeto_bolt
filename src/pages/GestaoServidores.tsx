@@ -7,6 +7,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Plus, Pencil, Trash2, Search, Upload, Loader2, FileDown, FileUp, ArrowUpDown, ArrowUp, ArrowDown, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
 import { fetchServidoresPage, saveServidor, deleteServidor, bulkImportServidores, fetchAllServidores, BulkImportError, type ImportErrorDetail } from '../services/servidorService';
+import DuplicateServidoresDialog from '../components/DuplicateServidoresDialog';
 import { formatRFMask, formatRFFromNumber } from '../lib/format';
 import { parseCSVFile, generateCSV, downloadCSV } from '../lib/csvParser';
 import { toast } from 'sonner';
@@ -364,6 +365,8 @@ export default function GestaoServidores() {
           <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage(totalPages - 1)}>Última</Button>
         </div>
       )}
+
+      <DuplicateServidoresDialog onResolved={loadPage} />
 
       {/* Edit/New Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
