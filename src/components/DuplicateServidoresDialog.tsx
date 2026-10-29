@@ -10,10 +10,6 @@ interface DuplicateGroup {
   servidores: Servidor[];
 }
 
-interface DuplicateServidoresDialogProps {
-  onResolved: () => void;
-}
-
 function rfBase(rf: string): string {
   return rf.replace(/\D/g, '').slice(0, 7);
 }
@@ -32,7 +28,7 @@ function findDuplicateGroups(all: Servidor[]): DuplicateGroup[] {
     .map(([key, servidores]) => ({ key, servidores }));
 }
 
-export default function DuplicateServidoresDialog({ onResolved }: DuplicateServidoresDialogProps) {
+export default function DuplicateServidoresDialog() {
   const [groups, setGroups] = useState<DuplicateGroup[]>([]);
   const [open, setOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -67,7 +63,6 @@ export default function DuplicateServidoresDialog({ onResolved }: DuplicateServi
       }
       const remaining = groups.slice(1);
       setGroups(remaining);
-      onResolved();
       if (remaining.length === 0) {
         setOpen(false);
         toast.success('Todos os registros duplicados foram resolvidos');

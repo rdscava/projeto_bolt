@@ -15,6 +15,7 @@ import { formatBRL, parseDecimalBR, extractMMYYYY, competToSortKey, generateComp
 import { getTetoINSS, isInTetoRange } from '../data/teto-inss';
 import { createSimulation, updateSimulation } from '../services/simulacaoService';
 import { generatePdfHtml } from '../lib/pdfGenerator';
+import DuplicateServidoresDialog from '../components/DuplicateServidoresDialog';
 import type { MediaRow, Simulation } from '../types';
 
 export default function Demonstrativo() {
@@ -179,6 +180,7 @@ export default function Demonstrativo() {
 
   return (
     <div className="space-y-4">
+      <DuplicateServidoresDialog />
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h2 className="text-xl font-bold">DEMONSTRATIVO</h2>
