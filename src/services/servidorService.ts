@@ -79,6 +79,13 @@ export async function searchServidorByRF(rf: string): Promise<Servidor | null> {
   return data ? mapServidor(data as unknown as Record<string, unknown>) : null;
 }
 
+export async function searchServidoresByRFBase(rf: string): Promise<Servidor[]> {
+  const { data, error } = await supabase
+    .rpc('find_servidores_by_rf_base', { p_rf: rf });
+  if (error) throw error;
+  return (data || []).map(row => mapServidor(row as unknown as Record<string, unknown>));
+}
+
 export async function saveServidor(servidor: Servidor): Promise<Servidor> {
   const payload = {
     'REG_COMPLETO': servidor.rf,

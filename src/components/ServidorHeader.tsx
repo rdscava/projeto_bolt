@@ -4,9 +4,11 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Search, Loader2 } from 'lucide-react';
-import { searchServidorByRF } from '../services/servidorService';
+import { searchServidoresByRFBase } from '../services/servidorService';
+import SelectDuplicateServidorDialog from './SelectDuplicateServidorDialog';
 import { formatRFMask } from '../lib/format';
 import { toast } from 'sonner';
+import type { Servidor } from '../types';
 
 interface Props {
   extraFields?: boolean;
@@ -16,17 +18,22 @@ export default function ServidorHeader({ extraFields = true }: Props) {
   const { servidor, setServidor } = useAppContext();
   const [rfInput, setRfInput] = useState(servidor?.rf || '');
   const [loading, setLoading] = useState(false);
+  const [duplicates, setDuplicates] = useState<Servidor[]>([]);
+  const [dupOpen, setDupOpen] = useState(false);
 
   const handleSearch = async () => {
     if (!rfInput.trim()) return;
     setLoading(true);
     try {
-      const found = await searchServidorByRF(rfInput);
-      if (found) {
-        setServidor(found);
-        toast.success(`Servidor localizado: ${found.nome}`);
-      } else {
+      const found = await searchServidoresByRFBase(rfInput);
+      if (found.length === 0) {
         toast.error('Nenhum servidor encontrado com esse RF');
+      } else if (found.length === 1) {
+        setServidor(found[0]);
+        toast.success(`Servidor localizado: ${found[0].nome}`);
+      } else {
+        setDuplicates(found);
+        setDupOpen(true);
       }
     } catch {
       toast.error('Erro ao buscar servidor');
@@ -35,6 +42,19 @@ export default function ServidorHeader({ extraFields = true }: Props) {
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') handleSearch();
+  };
+
+  const handleSelect = (s: Servidor) => {
+    setServidor(s);
+    setRfInput(s.rf);
+    setDupOpen(false);
+    setDuplicates([]);
+    toast.success(`Servidor localizado: ${s.nome}`);
+  };
+
+  const handleCancel = () => {
+    setDupOpen(false);
+    setDuplicates([]);
   };
 
   return (
@@ -87,6 +107,13 @@ export default function ServidorHeader({ extraFields = true }: Props) {
           </>
         )}
       </div>
+
+      <SelectDuplicateServidorDialog
+        open={dupOpen}
+        servidores={duplicates}
+        onSelect={handleSelect}
+        onCancel={handleCancel}
+      />
     </div>
   );
 }
