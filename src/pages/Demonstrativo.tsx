@@ -8,7 +8,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Trash2, Save, FileDown, Plus } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Trash2, Save, FileDown, Plus, Copy, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { RUBRICAS_80, TIPOS_APOSENTADORIA } from '../data/rubricas';
 import { formatBRL, parseDecimalBR, extractMMYYYY, competToSortKey, generateCompetencias } from '../lib/format';
@@ -23,6 +24,7 @@ export default function Demonstrativo() {
 
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [saveChoiceOpen, setSaveChoiceOpen] = useState(false);
   const { media, numMeses, totalContrib, somaMaiores, displayRows, dataInicio, dataFim } = useMemo(() => {
     const endCompet = tipoCalculo === '80' ? '03/2022' : (() => { const now = new Date(); return `${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`; })();
     const startSortKey = competToSortKey('07/1994');
@@ -94,25 +96,30 @@ export default function Demonstrativo() {
 
   const removeRubrica = (id: string) => setRubricas80(rubricas80.filter(r => r.id !== id));
 
-  const handleSave = async () => {
-    if (!servidor) { toast.error('Selecione um servidor'); return; }
+  const buildUpdated = (): Simulation | null => {
     const sim = ctx.activeSimulation;
-    if (!sim) { toast.error('Nenhuma simulação ativa'); return; }
+    if (!sim) { toast.error('Nenhuma simulação ativa'); return null; }
+    return {
+      ...sim,
+      servidor,
+      tipoCalculo,
+      indices,
+      sigpecBase: { data: sigpecData, filter: sigpecFilter },
+      admrh: { data: admrhData, filter: admrhFilter },
+      averbacao: { data: averbacaoData },
+      vinculoConfig,
+      baseJuncaoOverrides,
+      demonstrativo: { sexo, tempoExcedente, rubricas80, porcentagemBase, tipoAposentadoria },
+      dataUltimaAlteracao: new Date().toISOString(),
+    };
+  };
+
+  const doSaveOverwrite = async () => {
+    const sim = ctx.activeSimulation;
+    const updated = buildUpdated();
+    if (!updated || !sim) return;
     setSaving(true);
     try {
-      const updated: Simulation = {
-        ...sim,
-        servidor,
-        tipoCalculo,
-        indices,
-        sigpecBase: { data: sigpecData, filter: sigpecFilter },
-        admrh: { data: admrhData, filter: admrhFilter },
-        averbacao: { data: averbacaoData },
-        vinculoConfig,
-        baseJuncaoOverrides,
-        demonstrativo: { sexo, tempoExcedente, rubricas80, porcentagemBase, tipoAposentadoria },
-        dataUltimaAlteracao: new Date().toISOString(),
-      };
       if (sim.id) {
         await updateSimulation(sim.id, updated, media, valorFinal);
         ctx.updateSimulation(updated);
@@ -121,9 +128,35 @@ export default function Demonstrativo() {
         ctx.updateSimulation({ ...updated, id: newId });
       }
       setSimulacaoSalva(true);
+      setSaveChoiceOpen(false);
       toast.success('Simulação salva!');
     } catch { toast.error('Erro ao salvar'); }
     finally { setSaving(false); }
+  };
+
+  const doSaveNew = async () => {
+    const updated = buildUpdated();
+    if (!updated) return;
+    setSaving(true);
+    try {
+      const newId = await createSimulation({ ...updated, id: undefined, dataCriacao: new Date().toISOString() } as Simulation, media, valorFinal);
+      ctx.updateSimulation({ ...updated, id: newId, dataCriacao: new Date().toISOString() });
+      setSimulacaoSalva(true);
+      setSaveChoiceOpen(false);
+      toast.success('Nova simulação criada!');
+    } catch { toast.error('Erro ao salvar'); }
+    finally { setSaving(false); }
+  };
+
+  const handleSave = async () => {
+    if (!servidor) { toast.error('Selecione um servidor'); return; }
+    const sim = ctx.activeSimulation;
+    if (!sim) { toast.error('Nenhuma simulação ativa'); return; }
+    if (sim.id) {
+      setSaveChoiceOpen(true);
+    } else {
+      await doSaveOverwrite();
+    }
   };
 
   // Auto-save: when there's an active simulation with an ID and unsaved changes, debounce-save.
@@ -131,7 +164,7 @@ export default function Demonstrativo() {
     const sim = ctx.activeSimulation;
     if (!sim || !sim.id || simulacaoSalva) return;
     if (!servidor) return;
-    const timer = setTimeout(() => { handleSave(); }, 3000);
+    const timer = setTimeout(() => { doSaveOverwrite(); }, 3000);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sigpecData, sigpecFilter, admrhData, admrhFilter, averbacaoData, indices, vinculoConfig, rubricas80, sexo, tempoExcedente, porcentagemBase, tipoAposentadoria, tipoCalculo, servidor, baseJuncaoOverrides]);
@@ -199,12 +232,38 @@ export default function Demonstrativo() {
         </div>
       </div>
 
+      <Dialog open={saveChoiceOpen} onOpenChange={setSaveChoiceOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Salvar Simulação</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground mb-4">Já existe uma simulação salva. O que deseja fazer?</p>
+          <div className="flex flex-col gap-2">
+            <button type="button" onClick={doSaveNew} disabled={saving} className="text-left rounded-lg border border-border p-4 transition-colors hover:bg-muted flex items-start gap-3">
+              <Copy className="w-5 h-5 text-primary mt-0.5 shrink-0" />
+              <div>
+                <div className="font-medium">Criar nova simulação</div>
+                <div className="text-xs text-muted-foreground">Salva como um novo registro, mantendo a simulação original intacta.</div>
+              </div>
+            </button>
+            <button type="button" onClick={doSaveOverwrite} disabled={saving} className="text-left rounded-lg border border-border p-4 transition-colors hover:bg-muted flex items-start gap-3">
+              <RefreshCw className="w-5 h-5 text-primary mt-0.5 shrink-0" />
+              <div>
+                <div className="font-medium">Sobrescrever simulação existente</div>
+                <div className="text-xs text-muted-foreground">Atualiza a simulação atual com os dados mais recentes.</div>
+              </div>
+            </button>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSaveChoiceOpen(false)} disabled={saving}>Cancelar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <ServidorHeader />
 
       <div className="rounded-lg border border-border bg-card p-4">
         <RadioGroup value={tipoCalculo} onValueChange={v => setTipoCalculo(v as '80' | '100')} className="flex gap-6">
           <div className="flex items-center gap-2"><RadioGroupItem value="100" id="d100" /><Label htmlFor="d100">100% (Competência Atual)</Label></div>
-          <div className="flex items-center gap-2"><RadioGroupItem value="80" id="d80" /><Label htmlFor="d80">80% (até 01/03/2022)</Label></div>
+          <div className="flex items-center gap-2"><RadioGroupItem value="80" id="d80" /><Label htmlFor="d80">80% (até 18/03/2022)</Label></div>
         </RadioGroup>
       </div>
 
@@ -249,7 +308,7 @@ export default function Demonstrativo() {
       ) : (
         <>
           <div className="rounded-lg border border-border bg-card p-5 space-y-4">
-            <h3 className="text-sm font-semibold">Configurações — 80% (até 01/03/2022)</h3>
+            <h3 className="text-sm font-semibold">Configurações — 80% (até 18/03/2022)</h3>
             <div className="flex items-center gap-6 flex-wrap">
               <div>
                 <Label className="text-xs text-muted-foreground uppercase">Sexo</Label>

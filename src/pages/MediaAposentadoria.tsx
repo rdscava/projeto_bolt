@@ -114,7 +114,7 @@ export default function MediaAposentadoria() {
       <div className="rounded-lg border border-border bg-card p-4">
         <RadioGroup value={tipoCalculo} onValueChange={v => setTipoCalculo(v as '80' | '100')} className="flex gap-6">
           <div className="flex items-center gap-2"><RadioGroupItem value="100" id="t100" /><Label htmlFor="t100">100% (Competência Atual)</Label></div>
-          <div className="flex items-center gap-2"><RadioGroupItem value="80" id="t80" /><Label htmlFor="t80">80% (até 01/03/2022)</Label></div>
+          <div className="flex items-center gap-2"><RadioGroupItem value="80" id="t80" /><Label htmlFor="t80">80% (até 18/03/2022)</Label></div>
         </RadioGroup>
       </div>
 
